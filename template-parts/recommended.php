@@ -1,13 +1,26 @@
 <?php
 /**
  * 추천 게시물 섹션
+ *
+ * 기본: 전체에서 3개
+ * category.php 에서 사용할 때는 $args['borobill_root_term'] 로 루트 카테고리를 넘겨주면,
+ * 해당 카테고리(및 자식)에서만 3개를 가져온다.
  */
 
-// "추천" 카테고리(또는 임의의 주요 포스트) 3개 노출
-$featured_query = new WP_Query([
-    'posts_per_page' => 3,
+$borobill_root_term = isset( $args['borobill_root_term'] ) && $args['borobill_root_term'] instanceof WP_Term
+    ? $args['borobill_root_term']
+    : null;
+
+$featured_args = [
+    'posts_per_page'      => 3,
     'ignore_sticky_posts' => true,
-]);
+];
+
+if ( $borobill_root_term ) {
+    $featured_args['cat'] = $borobill_root_term->term_id;
+}
+
+$featured_query = new WP_Query( $featured_args );
 
 // 추천 카드 전용 기본 이미지 매핑 (2, 3, 4번 이미지를 순서대로 사용)
 $borobill_featured_fallbacks = [
@@ -21,24 +34,23 @@ $borobill_featured_index = 1;
 <section class="section section-featured">
     <div class="section-inner">
         <div class="section-header">
-            <h2 class="section-title">추천 게시물</h2>
-
-            <form role="search"
-                  method="get"
-                  class="search-form section-search"
-                  action="<?php echo esc_url( home_url( '/' ) ); ?>">
-                <label class="screen-reader-text" for="s">검색어</label>
-                <input type="search"
-                       id="s"
-                       class="search-field"
-                       placeholder="검색어를 입력해주세요"
-                       value="<?php echo get_search_query(); ?>"
-                       name="s" />
-                <button type="submit" class="search-icon-btn" aria-label="검색">
-                    <img src="<?php echo esc_url( get_template_directory_uri() . '/images/search.png' ); ?>"
-                         alt="검색 아이콘">
-                </button>
-            </form>
+            <div class="featured-head">
+    <h2 class="section-title">추천 게시물</h2>
+    <p class="section-desc">바로빌과 함께 다양한 추천 게시물을 확인해보세요.</p>
+</div>
+<form role="search"
+      method="get"
+      class="search-form section-search"
+      action="<?php echo esc_url( home_url( '/' ) ); ?>">
+    <label class="screen-reader-text" for="s">검색어</label>
+    <input type="search"
+           id="s"
+           class="search-field"
+           placeholder="검색어를 입력해주세요"
+           value="<?php echo get_search_query(); ?>"
+           name="s" />
+    <button type="submit" class="search-icon-btn search-btn-text" aria-label="검색">검색</button>
+</form>
         </div>
 
         <div class="featured-grid">
@@ -55,10 +67,13 @@ $borobill_featured_index = 1;
                         <a href="<?php the_permalink(); ?>" class="featured-thumb-wrap">
                             <?php
                             if ( has_post_thumbnail() ) {
-                                the_post_thumbnail( 'medium_large', [
-                                    'class' => 'featured-thumb',
-                                    'alt'   => esc_attr( get_the_title() ),
-                                ] );
+                                the_post_thumbnail(
+                                    'medium_large', // 자연스러운 비율 유지
+                                    [
+                                        'class' => 'featured-thumb',
+                                        'alt'   => esc_attr( get_the_title() ),
+                                    ]
+                                );
                             } else {
                                 // 지정된 2.png, 3.png, 4.png 이미지를 순서대로 사용
                                 $fallback_key = isset( $borobill_featured_fallbacks[ $borobill_featured_index ] )
@@ -88,33 +103,13 @@ $borobill_featured_index = 1;
                         <h3 class="featured-title">
                             <a href="<?php the_permalink(); ?>"><?php the_title(); ?></a>
                         </h3>
+                        <p class="featured-subdesc" style="margin-top:8px; color:#111; font-size:16px; font-style:normal; line-height:150%;">
+                            <?php echo esc_html( wp_trim_words( get_the_excerpt(), 24 ) ); ?>
+                        </p>
                     </article>
                 <?php endwhile; ?>
                 <?php wp_reset_postdata(); ?>
             <?php endif; ?>
-
-            <?php
-            // 항상 3장의 카드가 보이도록, 부족한 개수만큼 플레이스홀더 카드 추가
-            for ( $i = $borobill_card_count + 1; $i <= 3; $i++ ) :
-                $fallback_key = isset( $borobill_featured_fallbacks[ $borobill_featured_index ] )
-                    ? $borobill_featured_index
-                    : 1;
-                $fallback_src = get_template_directory_uri() . '/images/' . $borobill_featured_fallbacks[ $fallback_key ];
-                $borobill_featured_index++;
-                ?>
-                <article class="featured-card featured-card--placeholder">
-                    <div class="featured-thumb-wrap">
-                        <img src="<?php echo esc_url( $fallback_src ); ?>"
-                             class="featured-thumb"
-                             alt="추천 게시물 이미지">
-                    </div>
-                    <div class="featured-meta">
-                        <span class="badge badge-small">바로빌 가이드</span>
-                        <span class="meta-date"><?php echo esc_html( date( 'Y.m.d' ) ); ?></span>
-                    </div>
-                    <h3 class="featured-title">추천 게시물을 준비 중입니다.</h3>
-                </article>
-            <?php endfor; ?>
         </div>
     </div>
 </section>

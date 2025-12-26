@@ -81,11 +81,13 @@ get_header();
         <!-- Pagination -->
         <div class="pagination">
             <?php
-            echo paginate_links(array(
-                'prev_text' => '&laquo; 이전',
-                'next_text' => '다음 &raquo;',
-                'type' => 'list',
-            ));
+            echo paginate_links(
+                [
+                    'prev_text' => '&lsaquo;',
+                    'next_text' => '&rsaquo;',
+                    'type'      => 'list',
+                ]
+            );
             ?>
         </div>
     </div>
