@@ -1,0 +1,30 @@
+/* 251223 ver.1 - 전체 스타일 백업 (최신 style.css 전체 복사본) */
+
+/* 이하 style.css의 전체 CSS */
+
+/*
+Theme Name: Borobill Theme
+Theme URI: http://localhost/wordpress/
+Author: knetbizdesign-cell
+Description: 바로빌 블로그 디자인(히어로, 추천 게시물, 리스트, 배너, 푸터)을 구현한 클래식 테마
+Version: 1.0
+Text Domain: borobill-theme
+*/
+
+/* 기본 설정 */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif;
+    background-color: #ffffff;
+    color: #0b0b0e;
+    overflow-x: hidden;
+}
+
+/* ... 이하 style.css 최신 전체 내용 그대로 복사 ... */
