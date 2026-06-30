@@ -1,24 +1,54 @@
 jQuery(function ($) {
     var frame;
 
-    // 빠른편집 열릴 때 현재 글의 썸네일 ID를 숨은 필드에 채워 넣기
-    $(document).on('click', 'a.editinline', function () {
-        var $row   = $(this).closest('tr');
-        var postId = $row.attr('id').replace('post-', '');
+    function populateQuickEditFields(postId) {
+        var $row = $('#post-' + postId);
+        var $qeRow = $('#edit-' + postId);
+        if (!$qeRow.length) return;
 
-        inlineEditPost.revert(); // 기본 빠른편집 세팅
-
-        var $qeRow   = $('#edit-' + postId);
         var $thumbTd = $row.find('.column-thumbnail .borobill-thumb-cell');
-        var thumbId  = $thumbTd.data('thumb-id') || '';
-
+        var thumbId = ($thumbTd.attr('data-thumb-id') !== undefined && $thumbTd.attr('data-thumb-id') !== '') ? $thumbTd.attr('data-thumb-id') : '';
         $qeRow.find('.borobill-qe-thumb-id').val(thumbId);
+        $qeRow.find('.borobill-qe-thumb-removed').val('0');
 
         var thumbSrc = $thumbTd.find('img').attr('src') || '';
         if (thumbSrc) {
             $qeRow.find('.borobill-qe-thumb').attr('src', thumbSrc).show();
         } else {
-            $qeRow.find('.borobill-qe-thumb').hide();
+            $qeRow.find('.borobill-qe-thumb').attr('src', '').hide();
+        }
+
+        var $rt = $row.find('.borobill-col-rt');
+        var rt = 3;
+        if ($rt.length) {
+            var rtVal = $rt.attr('data-reading-time');
+            rt = (rtVal !== undefined && rtVal !== '') ? parseInt(rtVal, 10) : 3;
+            if (isNaN(rt) || rt < 0) rt = 3;
+        }
+        $qeRow.find('.borobill-qe-reading-time').val(rt);
+
+        var $views = $row.find('.borobill-col-views');
+        var views = 0;
+        if ($views.length) {
+            var vVal = $views.attr('data-views');
+            views = (vVal !== undefined && vVal !== '') ? parseInt(vVal, 10) : 0;
+            if (isNaN(views) || views < 0) views = 0;
+        }
+        $qeRow.find('.borobill-qe-views').val(views);
+    }
+
+    // 빠른편집 열릴 때 현재 글의 썸네일·리딩타임·조회수 값을 필드에 채우기 (WP DOM 반영 후 한 번 더 실행)
+    $(document).on('click', 'a.editinline', function () {
+        var $row = $(this).closest('tr');
+        var postId = $row.attr('id') ? $row.attr('id').replace('post-', '') : '';
+
+        inlineEditPost.revert();
+
+        if (postId) {
+            populateQuickEditFields(postId);
+            setTimeout(function () {
+                populateQuickEditFields(postId);
+            }, 0);
         }
     });
 
@@ -41,6 +71,7 @@ jQuery(function ($) {
         frame.on('select', function () {
             var attachment = frame.state().get('selection').first().toJSON();
             $wrap.find('.borobill-qe-thumb-id').val(attachment.id);
+            $wrap.find('.borobill-qe-thumb-removed').val('0');
             if (attachment.sizes && attachment.sizes.thumbnail) {
                 $wrap.find('.borobill-qe-thumb').attr('src', attachment.sizes.thumbnail.url).show();
             } else {
@@ -51,10 +82,11 @@ jQuery(function ($) {
         frame.open();
     });
 
-    // 제거 버튼
+    // 제거 버튼: 사용자가 명시적으로 제거한 경우만 저장 시 썸네일 삭제
     $(document).on('click', '.borobill-remove-thumb', function () {
         var $wrap = $(this).closest('.inline-edit-col');
         $wrap.find('.borobill-qe-thumb-id').val('');
+        $wrap.find('.borobill-qe-thumb-removed').val('1');
         $wrap.find('.borobill-qe-thumb').attr('src', '').hide();
     });
 });

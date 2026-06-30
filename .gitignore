@@ -26,3 +26,6 @@ yarn-error.log
 dist/
 build/
 
+# 테마 내부 전체 백업 스냅샷 (중첩 저장소 / 중복 방지)
+borobill_theme_2026.01.07/
+

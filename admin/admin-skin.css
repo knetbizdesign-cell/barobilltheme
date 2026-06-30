@@ -1,0 +1,760 @@
+/* Borobill admin skin (scoped)
+   Applies ONLY when body has .borobill-admin-skin
+   Targets:
+   - Appearance > Menus (nav-menus)
+   - Appearance > 메인/배너 설정 (theme options page)
+   - Posts list/editor (post) */
+
+body.borobill-admin-skin {
+  --bb-admin-bg: #f6f7fb;
+  --bb-admin-card: #ffffff;
+  --bb-admin-text: #0f172a;
+  --bb-admin-muted: #64748b;
+  --bb-admin-border: rgba(15, 23, 42, 0.08);
+  --bb-admin-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+  --bb-admin-shadow-sm: 0 6px 16px rgba(15, 23, 42, 0.08);
+  --bb-admin-radius: 14px;
+  --bb-admin-radius-sm: 12px;
+  --bb-admin-accent: #444bff;
+  --bb-admin-accent-weak: rgba(68, 75, 255, 0.12);
+  background: var(--bb-admin-bg);
+}
+
+body.borobill-admin-skin #wpcontent {
+  padding-left: 18px;
+}
+
+body.borobill-admin-skin #wpbody-content {
+  padding-bottom: 32px;
+}
+
+/* Page container */
+body.borobill-admin-skin .wrap {
+  max-width: 1240px;
+  margin: 24px auto 0;
+}
+
+/* Theme options page: use full available width (no big side whitespace) */
+body.borobill-admin-skin.appearance_page_borobill-theme-options .wrap {
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  padding-right: 18px;
+}
+
+body.borobill-admin-skin.appearance_page_borobill-theme-options #borobill-hero-slides {
+  width: 100%;
+}
+
+/* Posts pages: use full available width (no big side whitespace) */
+body.borobill-admin-skin.edit-php.post-type-post .wrap,
+body.borobill-admin-skin.post-php.post-type-post .wrap,
+body.borobill-admin-skin.post-new-php.post-type-post .wrap {
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  padding-right: 18px;
+}
+
+body.borobill-admin-skin .wrap > h1 {
+  font-size: 22px;
+  line-height: 1.25;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--bb-admin-text);
+  margin: 6px 0 10px;
+}
+
+body.borobill-admin-skin .wrap > p,
+body.borobill-admin-skin .wrap .description {
+  color: var(--bb-admin-muted);
+}
+
+/* Notices (make them look like cards but keep WP colors) */
+body.borobill-admin-skin .notice,
+body.borobill-admin-skin .updated,
+body.borobill-admin-skin .error {
+  border-radius: var(--bb-admin-radius-sm);
+  border: 1px solid var(--bb-admin-border);
+  box-shadow: var(--bb-admin-shadow-sm);
+}
+
+/* Generic card surfaces (metaboxes, WP cards) */
+body.borobill-admin-skin .card,
+body.borobill-admin-skin .postbox,
+body.borobill-admin-skin .stuffbox,
+body.borobill-admin-skin .welcome-panel,
+body.borobill-admin-skin #poststuff .postbox {
+  background: var(--bb-admin-card);
+  border: 1px solid var(--bb-admin-border);
+  border-radius: var(--bb-admin-radius);
+  box-shadow: var(--bb-admin-shadow-sm);
+}
+
+body.borobill-admin-skin .postbox .hndle,
+body.borobill-admin-skin .postbox .handlediv {
+  border-top-left-radius: var(--bb-admin-radius);
+  border-top-right-radius: var(--bb-admin-radius);
+}
+
+/* Inputs */
+body.borobill-admin-skin input[type="text"],
+body.borobill-admin-skin input[type="url"],
+body.borobill-admin-skin input[type="number"],
+body.borobill-admin-skin select,
+body.borobill-admin-skin textarea {
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  box-shadow: none;
+}
+
+/* Theme options page: improve label/input spacing */
+body.borobill-admin-skin.appearance_page_borobill-theme-options .borobill-hero-slide-card label,
+body.borobill-admin-skin.appearance_page_borobill-theme-options .borobill-hero-slide-card .description {
+  margin-top: 6px;
+}
+
+body.borobill-admin-skin.appearance_page_borobill-theme-options .borobill-hero-slide-card input[type="text"],
+body.borobill-admin-skin.appearance_page_borobill-theme-options .borobill-hero-slide-card input[type="url"],
+body.borobill-admin-skin.appearance_page_borobill-theme-options .borobill-hero-slide-card input[type="number"],
+body.borobill-admin-skin.appearance_page_borobill-theme-options .borobill-hero-slide-card textarea,
+body.borobill-admin-skin.appearance_page_borobill-theme-options .borobill-hero-slide-card select {
+  margin-top: 6px;
+}
+
+/* WP Color Picker: fix broken borders/lines under custom skin */
+body.borobill-admin-skin .wp-picker-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+body.borobill-admin-skin .wp-picker-container .wp-color-result.button {
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  box-shadow: none;
+  overflow: hidden;
+}
+
+body.borobill-admin-skin .wp-picker-container .wp-color-result.button::after {
+  border-left: 1px solid rgba(15, 23, 42, 0.14);
+  border-top-right-radius: 10px;
+  border-bottom-right-radius: 10px;
+}
+
+body.borobill-admin-skin .wp-picker-container input.wp-color-picker {
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  box-shadow: none;
+  height: 32px;
+  width: 86px;
+}
+
+body.borobill-admin-skin .wp-picker-container .wp-picker-input-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  flex-wrap: nowrap;
+}
+
+/* Theme options: keep color controls aligned and not wrapping */
+body.borobill-admin-skin.appearance_page_borobill-theme-options .borobill-color-pair {
+  width: 100%;
+}
+
+body.borobill-admin-skin.appearance_page_borobill-theme-options .borobill-color-pair .wp-picker-container {
+  width: 100%;
+}
+
+body.borobill-admin-skin.appearance_page_borobill-theme-options .borobill-color-pair .wp-picker-container .wp-color-result.button {
+  flex: 0 0 auto;
+}
+
+body.borobill-admin-skin.appearance_page_borobill-theme-options .borobill-color-pair .wp-picker-container .wp-picker-input-wrap {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+}
+
+
+body.borobill-admin-skin input[type="text"]:focus,
+body.borobill-admin-skin input[type="url"]:focus,
+body.borobill-admin-skin input[type="number"]:focus,
+body.borobill-admin-skin select:focus,
+body.borobill-admin-skin textarea:focus {
+  border-color: rgba(68, 75, 255, 0.55);
+  box-shadow: 0 0 0 3px rgba(68, 75, 255, 0.14);
+}
+
+/* Buttons */
+body.borobill-admin-skin .button,
+body.borobill-admin-skin .button-secondary {
+  border-radius: 10px;
+  border-color: rgba(15, 23, 42, 0.14);
+  box-shadow: none;
+}
+
+body.borobill-admin-skin .button-primary {
+  border-radius: 10px;
+  background: var(--bb-admin-accent);
+  border-color: var(--bb-admin-accent);
+  box-shadow: none;
+  text-shadow: none;
+}
+
+body.borobill-admin-skin .button-primary:hover,
+body.borobill-admin-skin .button-primary:focus {
+  background: #3a41f0;
+  border-color: #3a41f0;
+}
+
+/* ===== Posts list (글 > 모든 글) ===== */
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table {
+  border: none;
+  background: transparent;
+  border-collapse: separate;
+  border-spacing: 0 10px; /* row-as-card spacing */
+  table-layout: fixed; /* 컬럼 폭 고정 → 높이 일관 */
+  width: 100%;
+}
+
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table thead th,
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table tfoot th {
+  color: var(--bb-admin-muted);
+  font-weight: 700;
+}
+
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table tbody tr {
+  background: var(--bb-admin-card);
+  box-shadow: var(--bb-admin-shadow-sm);
+}
+
+/* 셀 패딩/정렬 통일 */
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table tbody td,
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table tbody th {
+  padding: 14px 12px;
+  vertical-align: middle;
+}
+
+/* 썸네일 고정 크기 */
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table .column-thumbnail,
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table .column-thumbnail {
+  width: 92px;
+}
+
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table .column-thumbnail img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 12px;
+  display: block;
+}
+
+/* 본문 미리보기(긴 텍스트)가 셀 밖으로 나오지 않게 숨김 */
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table .row-content,
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table .column-title .row-content {
+  display: none !important;
+}
+
+/* 일부 환경에서 본문이 p/div/span 형태로 들어오는 경우도 모두 숨김
+   (제목 strong + row-actions만 남김) */
+/* 타이틀 열 가로 확대, 제목 잘 보이도록 */
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table .column-title {
+  font-size: 0; /* 텍스트 노드(본문 문자열) 자체 숨김 */
+  min-width: 320px;
+  width: 32%;
+}
+
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table .column-title > p,
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table .column-title > div:not(.row-actions),
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table .column-title > span:not(.post-state) {
+  display: none !important;
+}
+
+/* 제목은 2줄까지만, 이후 말줄임 → 행 높이 균일, 가독성 */
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table .column-title strong {
+  display: block;
+  max-width: 100%;
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--bb-admin-text);
+}
+
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table .column-title .row-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  line-height: 1.4;
+  max-width: 100%;
+}
+
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table .column-title .row-actions,
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table .column-title .post-state {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table tbody td,
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table tbody th {
+  border-top: 1px solid var(--bb-admin-border);
+  border-bottom: 1px solid var(--bb-admin-border);
+}
+
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table tbody tr td:first-child,
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table tbody tr th:first-child {
+  border-left: 1px solid var(--bb-admin-border);
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+}
+
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table tbody tr td:last-child,
+body.borobill-admin-skin.edit-php.post-type-post .wp-list-table tbody tr th:last-child {
+  border-right: 1px solid var(--bb-admin-border);
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+body.borobill-admin-skin.edit-php.post-type-post .tablenav.top,
+body.borobill-admin-skin.edit-php.post-type-post .tablenav.bottom {
+  margin: 14px 0;
+}
+
+/* ===== Post editor (글 작성/편집) ===== */
+body.borobill-admin-skin.post-php.post-type-post #poststuff,
+body.borobill-admin-skin.post-new-php.post-type-post #poststuff {
+  padding-top: 10px;
+}
+
+body.borobill-admin-skin.post-php.post-type-post #poststuff .postbox,
+body.borobill-admin-skin.post-new-php.post-type-post #poststuff .postbox {
+  border-radius: var(--bb-admin-radius);
+}
+
+/* Post editor: subtitle field under title */
+body.borobill-admin-skin.post-php.post-type-post .borobill-subtitle-field,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-subtitle-field {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid var(--bb-admin-border);
+  border-radius: 12px;
+  box-shadow: var(--bb-admin-shadow-sm);
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-subtitle-field label,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-subtitle-field label {
+  display: inline-block;
+  color: var(--bb-admin-text);
+  font-size: 13px;
+}
+
+/* Post editor header card: title + subtitle + permalink */
+body.borobill-admin-skin.post-php.post-type-post .borobill-post-header-card,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-post-header-card {
+  margin: 10px 0 14px;
+  background: #fff;
+  border: 1px solid var(--bb-admin-border);
+  border-radius: 12px;
+  box-shadow: var(--bb-admin-shadow-sm);
+  overflow: hidden;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-post-header-card__row,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-post-header-card__row {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 10px 14px;
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-post-header-card__row:first-child,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-post-header-card__row:first-child {
+  border-top: 0;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-post-header-card__label,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-post-header-card__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  padding-top: 8px;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-post-header-card #titlediv,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-post-header-card #titlediv {
+  margin: 0;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-post-header-card #titlewrap,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-post-header-card #titlewrap {
+  margin: 0;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-post-header-card .borobill-subtitle-field,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-post-header-card .borobill-subtitle-field {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-post-header-card .borobill-subtitle-field label,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-post-header-card .borobill-subtitle-field label {
+  display: none;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-post-header-card .borobill-subtitle-field input,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-post-header-card .borobill-subtitle-field input {
+  margin-top: 0 !important;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-post-header-card #edit-slug-box,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-post-header-card #edit-slug-box {
+  margin: 0;
+  padding: 8px 0 0;
+  line-height: 1.5;
+}
+
+/* Post editor: left editor + right preview (50:50). 아코디언: 접으면 글쓰기 영역만 넓게 */
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap.is-preview-collapsed,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap.is-preview-collapsed {
+  grid-template-columns: minmax(0, 1fr) 52px;
+  align-items: start;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap.is-preview-collapsed #borobill-live-preview,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap.is-preview-collapsed #borobill-live-preview {
+  display: none !important;
+}
+
+.borobill-preview-toggle-strip {
+  display: none;
+  grid-column: 2;
+  grid-row: 1;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 0;
+  padding-top: 14px;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap.is-preview-collapsed .borobill-preview-toggle-strip,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap.is-preview-collapsed .borobill-preview-toggle-strip {
+  display: flex;
+}
+
+.borobill-preview-toggle-strip .borobill-preview-expand {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  letter-spacing: 0.05em;
+  padding: 12px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--bb-admin-border);
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.borobill-preview-toggle-strip .borobill-preview-expand:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+/* 왼쪽 영역(에디터) 카드형: 흰색 라운드 배경 */
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap #postdivrich,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap #postdivrich {
+  min-width: 0;
+  background: var(--bb-admin-card);
+  border: 1px solid var(--bb-admin-border);
+  border-radius: var(--bb-admin-radius);
+  box-shadow: var(--bb-admin-shadow-sm);
+  padding: 14px;
+  overflow: hidden;
+}
+
+/* 카드 안에만 보이게: 에디터 wrap/도구 영역이 카드 밖으로 튀어나오지 않도록 */
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-wrap,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-wrap {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* 에디터 도구 영역 통일: 미디어 추가 ~ 요약 블록 한 덩어리 카드형 (카드 내부에 유지) */
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-editor-tools,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-editor-tools {
+  background: #f8fafc !important;
+  padding: 10px 14px 8px !important;
+  border: 1px solid var(--bb-admin-border);
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  margin: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-editor-tools .wp-media-buttons,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-editor-tools .wp-media-buttons {
+  margin: 0;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-editor-tools .wp-media-buttons .button,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-editor-tools .wp-media-buttons .button {
+  border-radius: 10px;
+}
+
+/* 비주얼/코드 탭: 카드와 어울리게 통일 */
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-editor-tools .wp-editor-tabs,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-editor-tools .wp-editor-tabs {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-editor-tools .wp-switch-editor,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-editor-tools .wp-switch-editor {
+  border-radius: 8px;
+  padding: 5px 14px;
+  margin: 0;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--bb-admin-border);
+  color: var(--bb-admin-text);
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-editor-tools .wp-switch-editor.switch-tmce,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-editor-tools .wp-switch-editor.switch-tmce,
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-editor-tools .wp-switch-editor.switch-html,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-editor-tools .wp-switch-editor.switch-html {
+  box-shadow: none;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-editor-tools .wp-switch-editor.switch-tmce.active,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-editor-tools .wp-switch-editor.switch-tmce.active,
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-editor-tools .wp-switch-editor.switch-html.active,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-editor-tools .wp-switch-editor.switch-html.active {
+  background: var(--bb-admin-card);
+  border-color: var(--bb-admin-border);
+  font-weight: 600;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-editor-container,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap #postdivrich #wp-content-editor-container {
+  margin-top: 0;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  border-top: none;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap #postdivrich .mce-tinymce,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap #postdivrich .mce-tinymce {
+  box-shadow: none;
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
+  margin: 0;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap #postdivrich .mce-tinymce .mce-toolbar-grp,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap #postdivrich .mce-tinymce .mce-toolbar-grp {
+  background: #f8fafc !important;
+  border: 1px solid var(--bb-admin-border);
+  border-top: none;
+  padding: 8px 14px 10px !important;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap #postdivrich .mce-tinymce .mce-toolbar-grp:last-of-type,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap #postdivrich .mce-tinymce .mce-toolbar-grp:last-of-type {
+  border-radius: 0 0 12px 12px;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap #postdivrich .mce-tinymce .mce-panel,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap #postdivrich .mce-tinymce .mce-panel {
+  background: #f8fafc !important;
+  border-color: var(--bb-admin-border);
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap #postdivrich .mce-tinymce .mce-menubar,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap #postdivrich .mce-tinymce .mce-menubar {
+  background: #f8fafc !important;
+  border-color: var(--bb-admin-border);
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap #postdivrich .mce-toolbar .mce-btn-group,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap #postdivrich .mce-toolbar .mce-btn-group {
+  margin-left: 4px;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-live-preview,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-live-preview {
+  background: #fff;
+  border: 1px solid var(--bb-admin-border);
+  border-radius: 12px;
+  box-shadow: var(--bb-admin-shadow-sm);
+  display: flex;
+  flex-direction: column;
+  min-height: 520px;
+  overflow: hidden;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-live-preview__head,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-live-preview__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--bb-admin-border);
+  background: #f8fafc;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-live-preview__head strong,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-live-preview__head strong {
+  font-size: 13px;
+  color: #334155;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-live-preview__actions,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-live-preview__actions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-live-preview__body,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-live-preview__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  background: #fff;
+  position: relative;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-live-preview__iframe,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-live-preview__iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 460px;
+  border: 0;
+  display: block;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-live-preview__empty,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-live-preview__empty {
+  padding: 20px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+body.borobill-admin-skin.post-php.post-type-post .borobill-live-preview__notice,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-live-preview__notice {
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-top: 0;
+  border-radius: 0;
+}
+
+/* 오른쪽 영역: 실시간 미리보기 본문(iframe) 영역 내부 양옆 여백 */
+body.borobill-admin-skin.post-php.post-type-post .borobill-live-preview__body,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-live-preview__body {
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+/* 오른쪽 영역: 메타박스 검정 헤더 제거(밝은 스타일로 통일), 내부 양옆 여백 */
+body.borobill-admin-skin.post-php.post-type-post #postbox-container-1 .postbox .hndle,
+body.borobill-admin-skin.post-new-php.post-type-post #postbox-container-1 .postbox .hndle {
+  background: #f8fafc;
+  color: #334155;
+  border-bottom: 1px solid var(--bb-admin-border);
+}
+
+body.borobill-admin-skin.post-php.post-type-post #postbox-container-1,
+body.borobill-admin-skin.post-new-php.post-type-post #postbox-container-1 {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+body.borobill-admin-skin.post-php.post-type-post #postbox-container-1 .postbox .inside,
+body.borobill-admin-skin.post-new-php.post-type-post #postbox-container-1 .postbox .inside {
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+/* 리딩타임 메타박스: 타이틀 영역과 위쪽 정렬 (JS로 동적 margin 적용, 폴백용 기본값) */
+body.borobill-admin-skin.post-php.post-type-post .borobill-reading-time-postbox,
+body.borobill-admin-skin.post-new-php.post-type-post .borobill-reading-time-postbox {
+  margin-top: 0;
+}
+
+@media (max-width: 1440px) {
+  body.borobill-admin-skin.post-php.post-type-post .borobill-editor-preview-wrap,
+  body.borobill-admin-skin.post-new-php.post-type-post .borobill-editor-preview-wrap {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Classic editor textarea(텍스트 모드)도 고딕 계열로 통일 */
+body.borobill-admin-skin.post-php.post-type-post #content,
+body.borobill-admin-skin.post-new-php.post-type-post #content {
+  font-family: "Pretendard", "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+/* ===== Menus (모양 > 메뉴) ===== */
+body.borobill-admin-skin.nav-menus-php #nav-menus-frame {
+  margin-top: 16px;
+}
+
+body.borobill-admin-skin.nav-menus-php #nav-menus-frame .metabox-holder,
+body.borobill-admin-skin.nav-menus-php #nav-menus-frame .menu-edit {
+  background: transparent;
+}
+
+body.borobill-admin-skin.nav-menus-php #menu-management-liquid {
+  padding-top: 8px;
+}
+
+body.borobill-admin-skin.nav-menus-php #nav-menu-header,
+body.borobill-admin-skin.nav-menus-php #nav-menu-footer {
+  border-radius: var(--bb-admin-radius);
+  border: 1px solid var(--bb-admin-border);
+  box-shadow: var(--bb-admin-shadow-sm);
+}
+
+/* Small polish */
+body.borobill-admin-skin a {
+  color: inherit;
+}
+
+body.borobill-admin-skin a:hover {
+  color: var(--bb-admin-accent);
+}
+

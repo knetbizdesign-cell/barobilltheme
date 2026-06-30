@@ -16,19 +16,27 @@ if ( ! $root_term ) {
     return;
 }
 
-$children = get_categories( [
-    'hide_empty' => false,
-    'parent'     => $root_term->term_id,
-] );
+$children = get_categories(
+    [
+        'hide_empty' => false,
+        'parent'     => $root_term->term_id,
+    ]
+);
 ?>
 
 <section class="section section-filter section-filter--sub" style="padding-top:24px; padding-bottom:8px;">
-    <div class="section-inner" style="max-width:1312px;margin:0 auto;">
+    <div class="section-inner">
         <div class="category-subfilter-row">
             <div class="category-subfilter-tabs">
-                <button class="subfilter-item active" data-subcat="all">전체</button>
+                <?php
+                // 허브 페이지 내부에서만 동작하는 필터: URL 이동 없이 JS 로만 처리
+                ?>
+                <button type="button"
+                        class="subfilter-item active"
+                        data-subcat="all">전체</button>
                 <?php foreach ( $children as $child ) : ?>
-                    <button class="subfilter-item"
+                    <button type="button"
+                            class="subfilter-item"
                             data-subcat="<?php echo esc_attr( $child->slug ); ?>">
                         <?php echo esc_html( $child->name ); ?>
                     </button>

@@ -59,7 +59,27 @@ get_header();
                         <h3 class="article-title">
                             <a href="<?php the_permalink(); ?>"><?php the_title(); ?></a>
                         </h3>
-                        <p class="article-excerpt"><?php echo wp_trim_words(get_the_excerpt(), 15); ?></p>
+                        <?php
+                        $subtitle = borobill_get_post_subtitle( get_the_ID() );
+                        $subtext  = '' !== $subtitle ? $subtitle : borobill_get_post_summary_text( get_the_ID(), 15 );
+                        ?>
+                        <?php if ( '' !== $subtext ) : ?>
+                            <p class="article-subtitle"><a class="article-subtitle__link" href="<?php echo esc_url( get_permalink() ); ?>"><?php echo esc_html( $subtext ); ?></a></p>
+                        <?php endif; ?>
+
+                        <?php
+                        $tags = get_the_tags();
+                        if ( $tags && is_array( $tags ) ) :
+                            $tags = array_slice( $tags, 0, 3 );
+                            ?>
+                            <div class="article-tags" aria-label="태그">
+                                <?php foreach ( $tags as $tag ) : ?>
+                                    <span class="article-tag" draggable="false">
+                                        <span class="article-tag__text"><?php echo esc_html( $tag->name ); ?></span>
+                                    </span>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
                         <div class="article-meta">
                             <span class="article-date"><?php echo borobill_post_date(); ?></span>
                         </div>
@@ -79,17 +99,30 @@ get_header();
         </div>
         
         <!-- Pagination -->
-        <div class="pagination">
-            <?php
-            echo paginate_links(
-                [
-                    'prev_text' => '&lsaquo;',
-                    'next_text' => '&rsaquo;',
-                    'type'      => 'list',
-                ]
-            );
+        <?php
+        global $wp_query;
+        $total_pages = isset( $wp_query->max_num_pages ) ? (int) $wp_query->max_num_pages : 1;
+
+        // 페이지 수가 5 이하이면 1~마지막까지 모두 노출 (… 없이)
+        $mid_size = ( $total_pages <= 5 ) ? 5 : 1;
+        $end_size = ( $total_pages <= 5 ) ? 5 : 1;
+
+        $archive_links = paginate_links(
+            [
+                'mid_size'  => $mid_size,
+                'end_size'  => $end_size,
+                'prev_text' => '<span class="page-icon page-icon--prev" aria-hidden="true"></span>',
+                'next_text' => '<span class="page-icon page-icon--next" aria-hidden="true"></span>',
+            ]
+        );
+        if ( $archive_links ) :
             ?>
-        </div>
+            <div class="pagination">
+                <?php echo $archive_links; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+            </div>
+        <?php endif; ?>
+
+        <?php get_template_part( 'template-parts/bottom-cta-banner' ); ?>
     </div>
 </section>
 
