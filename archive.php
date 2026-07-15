@@ -67,19 +67,6 @@ get_header();
                             <p class="article-subtitle"><a class="article-subtitle__link" href="<?php echo esc_url( get_permalink() ); ?>"><?php echo esc_html( $subtext ); ?></a></p>
                         <?php endif; ?>
 
-                        <?php
-                        $tags = get_the_tags();
-                        if ( $tags && is_array( $tags ) ) :
-                            $tags = array_slice( $tags, 0, 3 );
-                            ?>
-                            <div class="article-tags" aria-label="태그">
-                                <?php foreach ( $tags as $tag ) : ?>
-                                    <span class="article-tag" draggable="false">
-                                        <span class="article-tag__text"><?php echo esc_html( $tag->name ); ?></span>
-                                    </span>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
                         <div class="article-meta">
                             <span class="article-date"><?php echo borobill_post_date(); ?></span>
                         </div>

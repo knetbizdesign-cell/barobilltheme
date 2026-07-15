@@ -55,6 +55,7 @@
         $stateResults  = $modal.querySelector('[data-state="results"]');
         $tagBadges     = document.getElementById('search-modal-tag-badges');
         $popularTags   = document.getElementById('search-modal-popular-tags');
+        $modalScrollBody = $modal.querySelector('.search-modal__body');
 
         // 자주 찾는 검색어: 태그 클릭 (최대 3개, 중복 선택 가능)
         if ($popularTags) {
@@ -141,6 +142,51 @@
     /* Open / Close                                                        */
     /* ------------------------------------------------------------------ */
     var savedScrollY = 0;
+    var isScrollLocked = false;
+    var $modalScrollBody = null;
+
+    function restoreWindowScroll() {
+        if (!isScrollLocked) return;
+        if ((window.scrollY || 0) !== savedScrollY) {
+            window.scrollTo(0, savedScrollY);
+        }
+    }
+
+    function isModalScrollableTarget(target) {
+        if (!$modalScrollBody || !target || typeof target.closest !== 'function') {
+            return false;
+        }
+        return $modalScrollBody.contains(target);
+    }
+
+    function onSearchModalWheel(e) {
+        if (!isScrollLocked) return;
+        if (isModalScrollableTarget(e.target)) return;
+        e.preventDefault();
+    }
+
+    function onSearchModalTouchMove(e) {
+        if (!isScrollLocked) return;
+        if (isModalScrollableTarget(e.target)) return;
+        e.preventDefault();
+    }
+
+    function lockPageScroll() {
+        savedScrollY = window.scrollY || window.pageYOffset || 0;
+        isScrollLocked = true;
+        restoreWindowScroll();
+        window.addEventListener('scroll', restoreWindowScroll, { passive: true });
+        document.addEventListener('wheel', onSearchModalWheel, { passive: false });
+        document.addEventListener('touchmove', onSearchModalTouchMove, { passive: false });
+    }
+
+    function unlockPageScroll() {
+        if (!isScrollLocked) return;
+        isScrollLocked = false;
+        window.removeEventListener('scroll', restoreWindowScroll);
+        document.removeEventListener('wheel', onSearchModalWheel);
+        document.removeEventListener('touchmove', onSearchModalTouchMove);
+    }
 
     function open(trigger) {
         if (isOpen) return;
@@ -148,14 +194,10 @@
         triggerEl = trigger || document.activeElement;
 
         $modal.hidden = false;
-        // 스크롤 잠금: overflow-hidden 대신 body를 fixed로 고정해 뒤 화면(GNB 포함)이 그대로 유지되도록 함
-        savedScrollY = window.scrollY || window.pageYOffset || 0;
-        document.body.style.position = 'fixed';
-        document.body.style.top = '-' + savedScrollY + 'px';
-        document.body.style.left = '0';
-        document.body.style.right = '0';
+        // 스크롤 잠금: body position:fixed 는 헤더·본문 간격이 튀므로, 이동 없이 휠·터치만 차단
         document.documentElement.classList.add('search-modal-open');
         document.body.classList.add('search-modal-open');
+        lockPageScroll();
 
         // 강제 리플로우 → 트랜지션 적용
         void $modal.offsetHeight;
@@ -189,17 +231,7 @@
             $modal.hidden = true;
             document.documentElement.classList.remove('search-modal-open');
             document.body.classList.remove('search-modal-open');
-            // 스크롤 잠금 해제: fixed 제거 후 저장한 위치로 복원
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.left = '';
-            document.body.style.right = '';
-            // scroll-behavior: smooth 때문에 부드럽게 복원되며 화면이 위→아래로 움직이므로 즉시 복원
-            var html = document.documentElement;
-            var prevBehavior = html.style.scrollBehavior;
-            html.style.scrollBehavior = 'auto';
-            window.scrollTo(0, savedScrollY);
-            html.style.scrollBehavior = prevBehavior;
+            unlockPageScroll();
 
             // 포커스 복귀
             if (triggerEl && typeof triggerEl.focus === 'function') {
@@ -323,8 +355,11 @@
                 var collected = [];
                 var page = 1;
                 var maxPages = 3; // 최신 글 기준으로 충분한 범위 (필요 시 증가)
+                var fields = 'id,date,link,title,excerpt,borobill_subtitle,_links';
                 while (page <= maxPages) {
-                    var url = API_BASE + 'posts?per_page=100&page=' + page + '&_embed&orderby=date&order=desc';
+                    var url = API_BASE + 'posts?per_page=100&page=' + page
+                        + '&_embed=wp:featuredmedia,wp:term&_fields=' + fields
+                        + '&orderby=date&order=desc';
                     var res = await fetch(url, { signal: signal });
                     if (!res.ok) break;
                     var data = await res.json();
@@ -335,15 +370,14 @@
                     page += 1;
                 }
 
-                // 검색용 정규화 문자열을 미리 계산 (제목/서브타이틀/뱃지(카테고리)/본문/태그 등)
+                // 검색용 정규화 문자열을 미리 계산 (제목/서브타이틀/뱃지(카테고리)/요약/태그 — 본문 HTML 제외)
                 collected.forEach(function (post) {
                     var title = post && post.title ? stripHTML(post.title.rendered || '') : '';
                     var subtitle = (post && (post.borobill_subtitle || (post.meta && post.meta._borobill_subtitle))) || '';
                     var excerpt = post && post.excerpt ? stripHTML(post.excerpt.rendered || '') : '';
-                    var content = post && post.content ? stripHTML(post.content.rendered || '') : '';
                     var tagNames = getEmbeddedTermNames(post, 'post_tag').join(' ');
                     var catNames = getEmbeddedTermNames(post, 'category').join(' ');
-                    post.__bbSearchHayNorm = normalizeForSearch([title, subtitle, excerpt, content, tagNames, catNames].join(' '));
+                    post.__bbSearchHayNorm = normalizeForSearch([title, subtitle, excerpt, tagNames, catNames].join(' '));
                     post.__bbSortTs = post && post.date ? (new Date(post.date)).getTime() : 0;
                 });
 

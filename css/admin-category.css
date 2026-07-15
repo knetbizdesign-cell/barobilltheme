@@ -1,0 +1,118 @@
+/* 글 > 카테고리 (edit-tags.php, term.php) */
+
+/* 목록 화면: 추천아티클 / 추천게시글 탭 (카테고리 타이틀 아래) */
+.taxonomy-category.edit-tags-php .borobill-category-tabs {
+    margin: 12px 0 16px;
+}
+
+/* 목록 화면: 좌측 카테고리 추가 폼 숨김 (메뉴 화면에서만 추가) */
+.taxonomy-category.edit-tags-php #col-left {
+    display: none;
+}
+
+.taxonomy-category.edit-tags-php #col-right {
+    width: 100%;
+    float: none;
+}
+
+.taxonomy-category.edit-tags-php form#addtag {
+    display: none;
+}
+
+/* 목록 + 우측 패널 분할 */
+.taxonomy-category.edit-tags-php #col-container.borobill-category-split-ready {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+}
+
+.taxonomy-category.edit-tags-php #col-container.borobill-category-split-ready #col-right {
+    flex: 0 0 46%;
+    width: 46%;
+    max-width: 46%;
+    float: none;
+}
+
+.taxonomy-category.edit-tags-php #borobill-category-panel {
+    flex: 1;
+    min-width: 0;
+    margin-top: 0;
+    padding-top: 28px;
+}
+
+.taxonomy-category.edit-tags-php .borobill-category-panel__placeholder {
+    color: #646970;
+    padding: 48px 16px;
+    text-align: center;
+    border: 1px dashed #c3c4c7;
+    border-radius: 4px;
+    background: #fff;
+}
+
+.taxonomy-category.edit-tags-php .borobill-category-panel__placeholder p {
+    margin: 0;
+}
+
+.taxonomy-category.edit-tags-php .borobill-category-panel__inner {
+    /* background: #fff; */
+    padding: 0 4px;
+}
+
+.taxonomy-category.edit-tags-php .borobill-category-panel__title {
+    margin: 0 0 12px;
+    font-size: 1.3em;
+}
+
+.taxonomy-category.edit-tags-php .borobill-category-panel__actions {
+    margin-top: 25px;
+    padding-top: 0;
+    text-align: center;
+}
+
+.taxonomy-category.edit-tags-php .borobill-category-panel__actions .button {
+    margin: 0 4px;
+}
+
+.taxonomy-category.edit-tags-php #the-list tr.borobill-category-row--active {
+    background-color: #f0f6fc;
+}
+
+.taxonomy-category.edit-tags-php #the-list a.row-title {
+    cursor: pointer;
+}
+
+/* term.php: 기본 카테고리 필드(이름·슬러그·부모·설명) 숨김 — 추천게시물만 표시 */
+.taxonomy-category.term-php .wrap > h1 {
+    display: none;
+}
+
+.taxonomy-category.term-php #edittag .form-field.term-name-wrap,
+.taxonomy-category.term-php #edittag .form-field.term-slug-wrap,
+.taxonomy-category.term-php #edittag .form-field.term-parent-wrap,
+.taxonomy-category.term-php #edittag .form-field.term-description-wrap {
+    display: none;
+}
+
+.taxonomy-category.term-php #edittag .term-recommended-wrap > td h2 {
+    margin-top: 0;
+}
+
+#addtag .term-recommended-wrap > h2,
+#edittag .term-recommended-wrap h2 {
+    margin-top: 20px;
+}
+
+#addtag .term-recommended-wrap .borobill-recommended-selects,
+#edittag .term-recommended-wrap .borobill-recommended-selects,
+.borobill-category-panel__form .borobill-recommended-selects {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+#addtag .term-recommended-wrap .borobill-recommended-selects select,
+#edittag .term-recommended-wrap .borobill-recommended-selects select,
+.borobill-category-panel__form .borobill-recommended-selects select {
+    flex: 1 1 0;
+    min-width: 140px;
+}

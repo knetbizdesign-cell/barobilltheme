@@ -5,22 +5,8 @@
 
 get_header();
 
-// 상위 5개 카테고리 (LNB용)
-$want_parents = [
-    '초보사업자',
-    '세무·비즈니스',
-    '사업자 뉴스룸',
-    '바로빌 가이드',
-    '고객사례·인사이트',
-];
-
-$parent_terms = [];
-foreach ( $want_parents as $parent_name ) {
-    $t = get_term_by( 'name', $parent_name, 'category' );
-    if ( $t && ! is_wp_error( $t ) ) {
-        $parent_terms[] = $t;
-    }
-}
+// LNB — header-menu(GNB)와 동일 구조
+$lnb_groups = borobill_get_header_gnb_lnb_groups();
 
 // 현재 글의 루트 카테고리 및 실제 소속 카테고리
 $root_term    = null;
@@ -44,34 +30,31 @@ if ( $cats ) {
         <!-- LNB : 상위/하위 카테고리 목록 -->
         <aside class="single-lnb">
             <nav class="category-lnb-inner">
-                <?php foreach ( $parent_terms as $parent ) : ?>
+                <?php foreach ( $lnb_groups as $group ) : ?>
                     <?php
-                    $is_current_root = ( $root_term instanceof WP_Term && (int) $root_term->term_id === (int) $parent->term_id );
-                    $children        = get_categories(
-                        [
-                            'hide_empty' => false,
-                            'parent'     => $parent->term_id,
-                        ]
-                    );
+                    $is_current_root = ( $root_term instanceof WP_Term && (int) $group['term_id'] > 0 && (int) $root_term->term_id === (int) $group['term_id'] );
+                    $is_current_parent = $is_current_root
+                        && $current_term instanceof WP_Term
+                        && $root_term instanceof WP_Term
+                        && (int) $current_term->term_id === (int) $root_term->term_id;
                     ?>
                     <div class="category-lnb-group<?php echo $is_current_root ? ' is-current' : ''; ?>">
                         <div class="category-lnb-parent-row">
-                            <a class="category-lnb-parent"
-                               href="<?php echo esc_url( get_category_link( $parent ) ); ?>">
-                                <?php echo esc_html( $parent->name ); ?>
+                            <a class="category-lnb-parent<?php echo $is_current_parent ? ' is-current' : ''; ?>"
+                               href="<?php echo esc_url( $group['url'] ); ?>">
+                                <?php echo esc_html( $group['title'] ); ?>
                             </a>
                         </div>
-                        <?php if ( $children ) : ?>
+                        <?php if ( ! empty( $group['children'] ) ) : ?>
                             <ul class="category-lnb-children">
-                                <?php foreach ( $children as $child ) : ?>
+                                <?php foreach ( $group['children'] as $child ) : ?>
                                     <?php
-                                    // 현재 글의 카테고리가 자식 항목이면 강조 표시
-                                    $is_current_child = ( $current_term instanceof WP_Term && (int) $current_term->term_id === (int) $child->term_id );
+                                    $is_current_child = ( $current_term instanceof WP_Term && (int) $child['term_id'] > 0 && (int) $current_term->term_id === (int) $child['term_id'] );
                                     ?>
                                     <li>
                                         <a class="<?php echo $is_current_child ? 'is-current' : ''; ?>"
-                                           href="<?php echo esc_url( get_category_link( $child ) ); ?>">
-                                            <?php echo esc_html( $child->name ); ?>
+                                           href="<?php echo esc_url( $child['url'] ); ?>">
+                                            <?php echo esc_html( $child['title'] ); ?>
                                         </a>
                                     </li>
                                 <?php endforeach; ?>
@@ -89,6 +72,9 @@ if ( $cats ) {
                 <article id="post-<?php the_ID(); ?>" <?php post_class( 'single-post' ); ?>>
 
                     <header class="post-header">
+                        <div class="post-header-meta">
+                            <span class="badge badge-small"><?php echo esc_html( borobill_get_root_gnb_category_name() ); ?></span>
+                        </div>
                         <h1 class="post-title"><?php the_title(); ?></h1>
                         <div class="post-subtitle-line">
                             <div class="post-subtitle-line__left">
@@ -100,12 +86,15 @@ if ( $cats ) {
                                 ?>
                             </div>
                             <div class="post-share-actions" aria-label="공유">
-                                <button type="button" class="post-share-btn post-share-btn--label post-share-copy" data-post-url="<?php echo esc_url( get_permalink() ); ?>" aria-label="공유하기" title="링크 복사">
-                                    <span class="post-share-btn-icon" aria-hidden="true">
-                                        <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/share.svg" width="20" height="20" alt="">
-                                    </span>
-                                    <span class="post-share-btn-text">공유하기</span>
-                                </button>
+                                <div class="post-share-dropdown">
+                                    <button type="button" class="post-share-btn post-share-btn--label" data-open-share data-post-url="<?php echo esc_url( get_permalink() ); ?>" aria-label="공유하기" aria-expanded="false" aria-controls="share-modal" title="공유하기">
+                                        <span class="post-share-btn-icon" aria-hidden="true">
+                                            <img src="<?php echo esc_url( get_template_directory_uri() ); ?>/images/share.svg" width="20" height="20" alt="">
+                                        </span>
+                                        <span class="post-share-btn-text">공유하기</span>
+                                    </button>
+                                    <?php get_template_part( 'template-parts/share-modal' ); ?>
+                                </div>
                             </div>
                         </div>
 
@@ -139,6 +128,35 @@ if ( $cats ) {
                         <?php the_content(); ?>
                     </div>
 
+                    <?php
+                    $post_banner_image = borobill_get_post_banner_image( get_the_ID() );
+                    if ( '' !== $post_banner_image ) :
+                        $post_banner_url = borobill_get_post_banner_url( get_the_ID() );
+                        $post_banner_alt = borobill_get_post_banner_alt( get_the_ID() );
+                        ?>
+                        <div class="post-bottom-banner">
+                            <?php if ( '' !== $post_banner_url ) : ?>
+                                <a href="<?php echo esc_url( $post_banner_url ); ?>" class="post-bottom-banner__link">
+                                    <img
+                                        src="<?php echo esc_url( $post_banner_image ); ?>"
+                                        alt="<?php echo esc_attr( $post_banner_alt ); ?>"
+                                        class="post-bottom-banner__image"
+                                        loading="lazy"
+                                        decoding="async"
+                                    />
+                                </a>
+                            <?php else : ?>
+                                <img
+                                    src="<?php echo esc_url( $post_banner_image ); ?>"
+                                    alt="<?php echo esc_attr( $post_banner_alt ); ?>"
+                                    class="post-bottom-banner__image"
+                                    loading="lazy"
+                                    decoding="async"
+                                />
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+
                     <footer class="post-footer">
                         <div class="post-tags">
                             <?php
@@ -159,11 +177,13 @@ if ( $cats ) {
                 if ( $root_term instanceof WP_Term ) {
                     $related_query = new WP_Query(
                         [
-                            'post_type'      => 'post',
-                            'post_status'    => 'publish',
-                            'posts_per_page' => 3,
-                            'post__not_in'   => [ get_the_ID() ],
-                            'cat'            => $root_term->term_id,
+                            'post_type'           => 'post',
+                            'post_status'         => 'publish',
+                            'posts_per_page'      => 3,
+                            'post__not_in'        => [ get_the_ID() ],
+                            'cat'                 => $root_term->term_id,
+                            'no_found_rows'       => true,
+                            'ignore_sticky_posts' => true,
                         ]
                     );
                     if ( $related_query->have_posts() ) :
@@ -230,6 +250,15 @@ if ( $cats ) {
             if ( $reading_time <= 0 ) {
                 $reading_time = 3;
             }
+            $reading_messages = function_exists( 'borobill_get_reading_messages' )
+                ? borobill_get_reading_messages()
+                : array(
+                    'start' => '시작이 반이에요, 천천히 읽어보세요.',
+                    '25'    => '조금만 더 읽으면 핵심내용!',
+                    '50'    => '이미 절반을 읽었어요.',
+                    '75'    => '거의 다 왔어요!',
+                    '100'   => '끝까지 읽으셨네요!',
+                );
             ?>
             <div class="single-reading-time" aria-label="읽기 진행률" role="region">
                 <div class="single-reading-time__head">
@@ -241,70 +270,113 @@ if ( $cats ) {
                         <div class="single-reading-time__bar-fill" style="width: 0%;"></div>
                     </div>
                 </div>
-                <p class="single-reading-time__message" data-msg-start="시작이 반이에요, 천천히 읽어보세요." data-msg-25="조금만 더 읽으면 핵심내용!" data-msg-50="이미 절반을 읽었어요." data-msg-75="거의 다 왔어요!" data-msg-100">시작이 반이에요, 천천히 읽어보세요.</p>
+                <p class="single-reading-time__message"
+                   data-msg-start="<?php echo esc_attr( $reading_messages['start'] ); ?>"
+                   data-msg-25="<?php echo esc_attr( $reading_messages['25'] ); ?>"
+                   data-msg-50="<?php echo esc_attr( $reading_messages['50'] ); ?>"
+                   data-msg-75="<?php echo esc_attr( $reading_messages['75'] ); ?>"
+                   data-msg-100="<?php echo esc_attr( $reading_messages['100'] ); ?>"><?php echo esc_html( $reading_messages['start'] ); ?></p>
             </div>
             <section class="single-aside-related">
                 <h2 class="single-aside-related-title">추천게시물</h2>
                 <div class="single-related-list">
                 <?php
-                // 추천게시물: 해당 카테고리 내 조회수(관리자 입력 _bb_views) 상위 3개
-                $current_cat_ids = wp_get_post_categories( get_the_ID() );
-                $recommended_args = [
-                    'post_type'      => 'post',
-                    'post_status'    => 'publish',
-                    'posts_per_page' => 3,
-                    'post__not_in'   => array( get_the_ID() ),
-                    'meta_key'       => '_bb_views',
-                    'orderby'        => 'meta_value_num',
-                    'order'          => 'DESC',
-                ];
-                if ( ! empty( $current_cat_ids ) ) {
-                    $recommended_args['category__in'] = $current_cat_ids;
-                }
-                $recommended_query = new WP_Query( $recommended_args );
-                $recommended_ids   = wp_list_pluck( $recommended_query->posts, 'ID' );
-                // 조회수 있는 글이 3개 미만이면 같은 카테고리 최신글으로 부족분 채움
-                if ( $recommended_query->post_count < 3 && ! empty( $current_cat_ids ) ) {
-                    $fill_args = [
-                        'post_type'      => 'post',
-                        'post_status'    => 'publish',
-                        'posts_per_page' => 3 - $recommended_query->post_count,
-                        'post__not_in'   => array_merge( array( get_the_ID() ), $recommended_ids ),
-                        'category__in'   => $current_cat_ids,
-                        'orderby'        => 'date',
-                        'order'          => 'DESC',
-                    ];
-                    $fill_query = new WP_Query( $fill_args );
-                    if ( $fill_query->have_posts() ) {
-                        $recommended_query->posts = array_merge( $recommended_query->posts, $fill_query->posts );
-                        $recommended_query->post_count = count( $recommended_query->posts );
-                        wp_reset_postdata();
+                // 추천게시글: 2차 카테고리 관리자 1~3순위 우선, 미설정·결과없음 시 전체 조회수순
+                $current_cat_ids   = array_map( 'intval', wp_get_post_categories( get_the_ID() ) );
+                $secondary_term_id = 0;
+                $recommended_posts = array();
+                $used_ids          = array( (int) get_the_ID() );
+
+                foreach ( borobill_get_gnb_parent_menu_items() as $parent_item ) {
+                    foreach ( borobill_get_gnb_child_category_items( (int) $parent_item['id'] ) as $child_item ) {
+                        $child_id = (int) $child_item['id'];
+                        if ( $child_id > 0 && in_array( $child_id, $current_cat_ids, true ) ) {
+                            $secondary_term_id = $child_id;
+                            break 2;
+                        }
                     }
                 }
-                if ( $recommended_query->have_posts() ) :
-                    while ( $recommended_query->have_posts() ) :
-                        $recommended_query->the_post();
-                  setup_postdata($post);
+
+                $has_admin_rec = false;
+                if ( $secondary_term_id > 0 ) {
+                    foreach ( array( 1, 2, 3 ) as $rank ) {
+                        if ( (int) get_term_meta( $secondary_term_id, 'borobill_recommended_post_' . $rank, true ) > 0 ) {
+                            $has_admin_rec = true;
+                            break;
+                        }
+                    }
+                }
+
+                if ( $has_admin_rec && $secondary_term_id > 0 ) {
+                    foreach ( array( 1, 2, 3 ) as $rank ) {
+                        $pid = (int) get_term_meta( $secondary_term_id, 'borobill_recommended_post_' . $rank, true );
+                        if ( $pid <= 0 || in_array( $pid, $used_ids, true ) ) {
+                            continue;
+                        }
+                        $rec_post = get_post( $pid );
+                        if ( ! $rec_post || 'publish' !== $rec_post->post_status || 'post' !== $rec_post->post_type ) {
+                            continue;
+                        }
+                        $recommended_posts[] = $rec_post;
+                        $used_ids[]          = $pid;
+                        if ( count( $recommended_posts ) >= 3 ) {
+                            break;
+                        }
+                    }
+                }
+
+                if ( empty( $recommended_posts ) ) {
+                    $recommended_posts = borobill_get_recommended_posts(
+                        array(
+                            'exclude_post_id' => get_the_ID(),
+                            'limit'           => 3,
+                        )
+                    );
+                }
+
+                // 조회수 메타 없는 경우에도 비지 않도록 최신글 폴백
+                if ( empty( $recommended_posts ) ) {
+                    $recommended_posts = get_posts(
+                        array(
+                            'post_type'           => 'post',
+                            'post_status'         => 'publish',
+                            'numberposts'         => 3,
+                            'post__not_in'        => array( (int) get_the_ID() ),
+                            'orderby'             => 'date',
+                            'order'               => 'DESC',
+                            'ignore_sticky_posts' => true,
+                        )
+                    );
+                }
+
+                foreach ( $recommended_posts as $post ) :
+                    setup_postdata( $post );
                 ?>
                   <article class="single-related-card">
-                      <a href="<?php the_permalink(); ?>" class="single-related-thumb">
+                      <a href="<?php echo esc_url( get_permalink( $post ) ); ?>" class="single-related-thumb">
                         <?php
-                        if ( has_post_thumbnail() ) {
-                          the_post_thumbnail('medium_large', ['class' => 'single-related-img', 'alt' => esc_attr(get_the_title()) ]);
+                        if ( has_post_thumbnail( $post ) ) {
+                            echo get_the_post_thumbnail(
+                                $post,
+                                'medium_large',
+                                array(
+                                    'class' => 'single-related-img',
+                                    'alt'   => esc_attr( get_the_title( $post ) ),
+                                )
+                            );
                         } else {
                         ?>
                         <img src="<?php echo esc_url( get_template_directory_uri() . '/images/default.png' ); ?>" class="single-related-img" alt="기본 이미지" />
                         <?php } ?>
                       </a>
                       <div class="single-related-body">
-                        <h3 class="single-related-post-title"><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h3>
-                        <span class="meta-date"><?php echo esc_html( borobill_post_date() ); ?></span>
+                        <h3 class="single-related-post-title"><a href="<?php echo esc_url( get_permalink( $post ) ); ?>"><?php echo esc_html( get_the_title( $post ) ); ?></a></h3>
+                        <span class="meta-date"><?php echo esc_html( borobill_post_date( $post->ID ) ); ?></span>
                       </div>
                   </article>
                 <?php
-                    endwhile;
-                    wp_reset_postdata();
-                endif;
+                endforeach;
+                wp_reset_postdata();
                 ?>
                 </div>
             </section>
@@ -316,37 +388,6 @@ if ( $cats ) {
 
     </div>
 </div>
-
-<script>
-(function() {
-    var btn = document.querySelector('.post-share-copy');
-    if (!btn) return;
-    btn.addEventListener('click', function() {
-        var url = btn.getAttribute('data-post-url') || window.location.href;
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(url).then(function() {
-                var orig = btn.getAttribute('title');
-                btn.setAttribute('title', '복사되었습니다');
-                setTimeout(function() { btn.setAttribute('title', orig || '링크 복사'); }, 1500);
-            });
-        } else {
-            var ta = document.createElement('textarea');
-            ta.value = url;
-            ta.style.position = 'fixed';
-            ta.style.left = '-9999px';
-            document.body.appendChild(ta);
-            ta.select();
-            try {
-                document.execCommand('copy');
-                var orig = btn.getAttribute('title');
-                btn.setAttribute('title', '복사되었습니다');
-                setTimeout(function() { btn.setAttribute('title', orig || '링크 복사'); }, 1500);
-            } catch (e) {}
-            document.body.removeChild(ta);
-        }
-    });
-})();
-</script>
 
 <?php get_footer(); ?>
 

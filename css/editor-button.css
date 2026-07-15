@@ -13,3 +13,71 @@
 .post-summary p {
     margin: 0;
 }
+
+.borobill-table-picker {
+    position: absolute;
+    z-index: 100200;
+    width: 220px;
+    padding: 12px;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+}
+
+.borobill-table-picker__label {
+    margin-bottom: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #334155;
+    text-align: center;
+}
+
+.borobill-table-picker__grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 3px;
+    margin-bottom: 10px;
+}
+
+.borobill-table-picker__cell {
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 1px solid #d6dde7;
+    border-radius: 3px;
+    background: #f8fafc;
+    cursor: pointer;
+}
+
+.borobill-table-picker__cell.is-selected {
+    background: #5d88b9;
+    border-color: #4b76a7;
+}
+
+.borobill-table-picker__custom {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding-top: 8px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.borobill-table-picker__custom label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #475569;
+}
+
+.borobill-table-picker__custom input {
+    width: 48px;
+    min-height: 28px;
+    padding: 2px 6px;
+}
+
+.borobill-table-picker__apply {
+    margin-left: auto;
+}

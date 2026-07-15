@@ -33,22 +33,8 @@ $root_slug = $root_term instanceof WP_Term ? $root_term->slug : '';
 // 현재 페이지가 루트 허브 페이지인지 여부
 $is_root_page = ( $term instanceof WP_Term && $root_term instanceof WP_Term && (int) $term->term_id === (int) $root_term->term_id );
 
-// LNB 에서 사용할 상위 카테고리 5개 (GNB 와 동일한 순서)
-$want_parents = [
-    '초보사업자',
-    '세무·비즈니스',
-    '사업자 뉴스룸',
-    '바로빌 가이드',
-    '고객사례·인사이트',
-];
-
-$parent_terms = [];
-foreach ( $want_parents as $parent_name ) {
-    $t = get_term_by( 'name', $parent_name, 'category' );
-    if ( $t && ! is_wp_error( $t ) ) {
-        $parent_terms[] = $t;
-    }
-}
+// LNB — header-menu(GNB)와 동일 구조
+$lnb_groups = borobill_get_header_gnb_lnb_groups();
 
 // 상단 히어로 영역용 데이터 (최근 아티클 기준)
 // 규칙
@@ -62,23 +48,19 @@ $hero_ids        = [];
 $hero_posts      = [];
 $hero_total_post = 0;
 
-// 관리자가 카테고리 편집에서 지정한 추천 아티클 1/2/3이 있으면 우선 사용 (루트 카테고리 페이지만, 해당 카테고리+하위 글만 노출)
+// 관리자가 카테고리 편집에서 지정한 추천 아티클 1/2/3이 있으면 우선 사용 (루트 카테고리 페이지만)
+// 저장한 글을 그대로 노출한다. (다른 1차·2차에서 고른 글도 포함)
 if ( $is_root_page && $root_term instanceof WP_Term ) {
-    $root_cat_ids = borobill_get_category_tree_ids( $root_term->term_id );
     $rid1 = (int) get_term_meta( $root_term->term_id, 'borobill_recommended_post_1', true );
     $rid2 = (int) get_term_meta( $root_term->term_id, 'borobill_recommended_post_2', true );
     $rid3 = (int) get_term_meta( $root_term->term_id, 'borobill_recommended_post_3', true );
     if ( $rid1 > 0 || $rid2 > 0 || $rid3 > 0 ) {
         foreach ( array( $rid1, $rid2, $rid3 ) as $pid ) {
-            if ( $pid <= 0 ) {
+            if ( $pid <= 0 || in_array( $pid, $hero_ids, true ) ) {
                 continue;
             }
             $p = get_post( $pid );
             if ( ! $p || 'publish' !== $p->post_status || 'post' !== $p->post_type ) {
-                continue;
-            }
-            $post_cats = wp_get_post_categories( $p->ID );
-            if ( empty( array_intersect( $root_cat_ids, $post_cats ) ) ) {
                 continue;
             }
             $hero_posts[] = $p;
@@ -87,7 +69,7 @@ if ( $is_root_page && $root_term instanceof WP_Term ) {
     }
 }
 
-// 1단계: 추천 지정이 없을 때만 자동(최근 아티클) 기준으로 계산
+// 1단계: 추천이 3개 미만이면 자동(최근 아티클)으로 나머지 슬롯 채움
 $hero_recent_args = [
     'post_type'      => 'post',
     'post_status'    => 'publish',
@@ -112,96 +94,125 @@ if ( $term instanceof WP_Term && $root_term instanceof WP_Term && (int) $term->t
     $hero_recent_args['category__in'] = $cat_ids;
 }
 
-// hero_recent_args 가 구성된 경우에만 처리 (관리자 추천이 이미 있으면 자동 기준 스킵)
-if ( empty( $hero_posts ) && ( isset( $hero_recent_args['cat'] ) || isset( $hero_recent_args['category__in'] ) ) ) {
-    $hero_recent_query = new WP_Query( $hero_recent_args );
+// 관리자 추천이 하나도 없을 때만 자동 규칙으로 전체 구성.
+// 1~2개만 지정된 경우에도 나머지 자리는 아래에서 채운다.
+$hero_needs_auto = ( count( $hero_posts ) < 3 )
+    && ( isset( $hero_recent_args['cat'] ) || isset( $hero_recent_args['category__in'] ) );
 
-    // 이 카테고리 트리 안의 전체 글 수
-    $hero_total_post = (int) $hero_recent_query->found_posts;
+if ( $hero_needs_auto ) {
+    // 관리자 추천이 전혀 없을 때: 기존 자동 규칙
+    if ( empty( $hero_ids ) ) {
+        $hero_recent_query = new WP_Query( $hero_recent_args );
 
-    if ( $hero_total_post <= 4 ) {
-        // 글이 4개 이하일 때: "최근 아티클" 순서 그대로 최신 글부터 최대 3개까지 노출
-        if ( $hero_recent_query->have_posts() ) {
-            while ( $hero_recent_query->have_posts() && count( $hero_posts ) < 3 ) {
-                $hero_recent_query->the_post();
-                $hero_posts[] = get_post();
-                $hero_ids[]   = get_the_ID();
-            }
-        }
-        wp_reset_postdata();
-    } else {
-        // 글이 충분히 많을 때는 기존 규칙 유지
-        wp_reset_postdata();
+        // 이 카테고리 트리 안의 전체 글 수
+        $hero_total_post = (int) $hero_recent_query->found_posts;
 
-        if ( $term instanceof WP_Term && $root_term instanceof WP_Term && (int) $term->term_id !== (int) $root_term->term_id ) {
-            // 하위 카테고리 페이지: 해당 카테고리에서 최신 글 3개
-            $hero_query = new WP_Query(
-                [
-                    'post_type'      => 'post',
-                    'post_status'    => 'publish',
-                    'posts_per_page' => 3,
-                    'cat'            => $term->term_id,
-                ]
-            );
-
-            if ( $hero_query->have_posts() ) {
-                while ( $hero_query->have_posts() ) {
-                    $hero_query->the_post();
+        if ( $hero_total_post <= 4 ) {
+            // 글이 4개 이하일 때: "최근 아티클" 순서 그대로 최신 글부터 최대 3개까지 노출
+            if ( $hero_recent_query->have_posts() ) {
+                while ( $hero_recent_query->have_posts() && count( $hero_posts ) < 3 ) {
+                    $hero_recent_query->the_post();
                     $hero_posts[] = get_post();
                     $hero_ids[]   = get_the_ID();
                 }
-                wp_reset_postdata();
             }
-        } elseif ( $root_term instanceof WP_Term ) {
-            // 루트 카테고리 페이지: 하위 카테고리별 최신 글 1개씩
-            $hero_children = get_categories(
-                [
-                    'hide_empty' => false,
-                    'parent'     => $root_term->term_id,
-                ]
-            );
+            wp_reset_postdata();
+        } else {
+            // 글이 충분히 많을 때는 기존 규칙 유지
+            wp_reset_postdata();
 
-            foreach ( $hero_children as $child_cat ) {
-                if ( count( $hero_posts ) >= 3 ) {
-                    break;
-                }
-                $child_query = new WP_Query([
-                    'post_type'      => 'post',
-                    'post_status'    => 'publish',
-                    'posts_per_page' => 1,
-                    'cat'            => $child_cat->term_id,
-                ]);
-                if ( $child_query->have_posts() ) {
-                    $child_query->the_post();
-                    $hero_posts[] = get_post();
-                    $hero_ids[]   = get_the_ID();
-                    wp_reset_postdata();
-                }
-            }
-            // 3개 미만이면, 루트 카테고리+자식 전체에서 중복 없는 최신글로 채워넣기
-            if ( count( $hero_posts ) < 3 ) {
-                $fill_needed = 3 - count( $hero_posts );
-                // 루트+자식 최신글 쿼리 (이미 $hero_ids 에 있는 게시글은 제외)
-                $cat_ids = [ (int) $root_term->term_id ];
-                foreach ( $hero_children as $c2 ) {
-                    $cat_ids[] = (int) $c2->term_id;
-                }
-                $fill_query = new WP_Query([
-                    'post_type'      => 'post',
-                    'post_status'    => 'publish',
-                    'posts_per_page' => $fill_needed * 2, // 여유있게 쿼리
-                    'category__in'   => $cat_ids,
-                    'post__not_in'   => $hero_ids,
-                ]);
-                if ( $fill_query->have_posts() ) {
-                    while ( $fill_query->have_posts() && count( $hero_posts ) < 3 ) {
-                        $fill_query->the_post();
+            if ( $term instanceof WP_Term && $root_term instanceof WP_Term && (int) $term->term_id !== (int) $root_term->term_id ) {
+                // 하위 카테고리 페이지: 해당 카테고리에서 최신 글 3개
+                $hero_query = new WP_Query(
+                    [
+                        'post_type'           => 'post',
+                        'post_status'         => 'publish',
+                        'posts_per_page'      => 3,
+                        'cat'                 => $term->term_id,
+                        'no_found_rows'       => true,
+                        'ignore_sticky_posts' => true,
+                    ]
+                );
+
+                if ( $hero_query->have_posts() ) {
+                    while ( $hero_query->have_posts() ) {
+                        $hero_query->the_post();
                         $hero_posts[] = get_post();
                         $hero_ids[]   = get_the_ID();
                     }
                     wp_reset_postdata();
                 }
+            } elseif ( $root_term instanceof WP_Term ) {
+                // 루트 카테고리 페이지: 하위 카테고리별 최신 글 1개씩
+                $hero_children = get_categories(
+                    [
+                        'hide_empty' => false,
+                        'parent'     => $root_term->term_id,
+                    ]
+                );
+
+                foreach ( $hero_children as $child_cat ) {
+                    if ( count( $hero_posts ) >= 3 ) {
+                        break;
+                    }
+                    $child_query = new WP_Query([
+                        'post_type'           => 'post',
+                        'post_status'         => 'publish',
+                        'posts_per_page'      => 1,
+                        'cat'                 => $child_cat->term_id,
+                        'no_found_rows'       => true,
+                        'ignore_sticky_posts' => true,
+                    ]);
+                    if ( $child_query->have_posts() ) {
+                        $child_query->the_post();
+                        $hero_posts[] = get_post();
+                        $hero_ids[]   = get_the_ID();
+                        wp_reset_postdata();
+                    }
+                }
+                // 3개 미만이면, 루트 카테고리+자식 전체에서 중복 없는 최신글로 채워넣기
+                if ( count( $hero_posts ) < 3 ) {
+                    $fill_needed = 3 - count( $hero_posts );
+                    // 루트+자식 최신글 쿼리 (이미 $hero_ids 에 있는 게시글은 제외)
+                    $cat_ids = [ (int) $root_term->term_id ];
+                    foreach ( $hero_children as $c2 ) {
+                        $cat_ids[] = (int) $c2->term_id;
+                    }
+                    $fill_query = new WP_Query([
+                        'post_type'           => 'post',
+                        'post_status'         => 'publish',
+                        'posts_per_page'      => $fill_needed * 2, // 여유있게 쿼리
+                        'category__in'        => $cat_ids,
+                        'post__not_in'        => $hero_ids,
+                        'no_found_rows'       => true,
+                        'ignore_sticky_posts' => true,
+                    ]);
+                    if ( $fill_query->have_posts() ) {
+                        while ( $fill_query->have_posts() && count( $hero_posts ) < 3 ) {
+                            $fill_query->the_post();
+                            $hero_posts[] = get_post();
+                            $hero_ids[]   = get_the_ID();
+                        }
+                        wp_reset_postdata();
+                    }
+                }
             }
+        }
+    } else {
+        // 관리자 추천이 1~2개만 있을 때: 같은 카테고리 트리 최신글로 나머지 채움
+        $fill_args = $hero_recent_args;
+        $fill_args['posts_per_page']      = ( 3 - count( $hero_posts ) ) * 2;
+        $fill_args['post__not_in']        = $hero_ids;
+        $fill_args['no_found_rows']       = true;
+        $fill_args['ignore_sticky_posts'] = true;
+        $fill_query = new WP_Query( $fill_args );
+        if ( $fill_query->have_posts() ) {
+            while ( $fill_query->have_posts() && count( $hero_posts ) < 3 ) {
+                $fill_query->the_post();
+                $hero_posts[] = get_post();
+                $hero_ids[]   = get_the_ID();
+            }
+            wp_reset_postdata();
         }
     }
 }
@@ -212,34 +223,28 @@ if ( empty( $hero_posts ) && ( isset( $hero_recent_args['cat'] ) || isset( $hero
         <!-- LNB -->
         <aside class="category-lnb">
             <nav class="category-lnb-inner">
-                <?php foreach ( $parent_terms as $parent ) : ?>
+                <?php foreach ( $lnb_groups as $group ) : ?>
                     <?php
-                    $is_current_root = ( $root_term instanceof WP_Term && (int) $root_term->term_id === (int) $parent->term_id );
-                    $children        = get_categories(
-                        [
-                            'hide_empty' => false,
-                            'parent'     => $parent->term_id,
-                        ]
-                    );
+                    $is_current_root = ( $root_term instanceof WP_Term && (int) $group['term_id'] > 0 && (int) $root_term->term_id === (int) $group['term_id'] );
+                    $is_current_parent = $is_current_root && $is_root_page;
                     ?>
                     <div class="category-lnb-group<?php echo $is_current_root ? ' is-current' : ''; ?>">
                         <div class="category-lnb-parent-row">
-                            <a class="category-lnb-parent"
-                               href="<?php echo esc_url( get_category_link( $parent ) ); ?>">
-                                <?php echo esc_html( $parent->name ); ?>
+                            <a class="category-lnb-parent<?php echo $is_current_parent ? ' is-current' : ''; ?>"
+                               href="<?php echo esc_url( $group['url'] ); ?>">
+                                <?php echo esc_html( $group['title'] ); ?>
                             </a>
                         </div>
-                        <?php if ( $children ) : ?>
+                        <?php if ( ! empty( $group['children'] ) ) : ?>
                             <ul class="category-lnb-children">
-                                <?php foreach ( $children as $child ) : ?>
+                                <?php foreach ( $group['children'] as $child ) : ?>
                                     <?php
-                                    // 현재 보고 있는 카테고리가 자식 항목이면 강조 표시
-                                    $is_current_child = ( $term instanceof WP_Term && (int) $term->term_id === (int) $child->term_id );
+                                    $is_current_child = ( $term instanceof WP_Term && (int) $child['term_id'] > 0 && (int) $term->term_id === (int) $child['term_id'] );
                                     ?>
                                     <li>
                                         <a class="<?php echo $is_current_child ? 'is-current' : ''; ?>"
-                                           href="<?php echo esc_url( get_category_link( $child ) ); ?>">
-                                            <?php echo esc_html( $child->name ); ?>
+                                           href="<?php echo esc_url( $child['url'] ); ?>">
+                                            <?php echo esc_html( $child['title'] ); ?>
                                         </a>
                                     </li>
                                 <?php endforeach; ?>
@@ -403,33 +408,33 @@ if ( empty( $hero_posts ) && ( isset( $hero_recent_args['cat'] ) || isset( $hero
                                 </div>
 
                                 <?php if ( $category_hero_mobile_n >= 2 ) : ?>
-                                    <div class="category-hero-carousel-nav" aria-label="<?php esc_attr_e( '추천 아티클 슬라이드 탐색', 'borobill_theme' ); ?>">
+                                    <div class="category-hero-carousel-pagination" aria-label="<?php esc_attr_e( '추천 아티클 슬라이드 탐색', 'borobill_theme' ); ?>">
                                         <button type="button"
-                                                class="category-hero-carousel-btn category-hero-carousel-btn--prev"
+                                                class="category-hero-carousel-pagination__btn category-hero-carousel-pagination__btn--prev"
                                                 data-category-hero-prev
                                                 aria-controls="category-hero-carousel-track"
                                                 aria-label="<?php esc_attr_e( '이전 추천 글', 'borobill_theme' ); ?>">
                                             <span aria-hidden="true">
-                                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                             </span>
                                         </button>
+                                        <div class="category-hero-carousel-pagination__counter"
+                                             aria-live="polite"
+                                             aria-atomic="true"
+                                             aria-label="<?php echo esc_attr( sprintf( '슬라이드 %d / %d', 1, (int) $category_hero_mobile_n ) ); ?>">
+                                            <span class="category-hero-carousel-pagination__current">1</span>
+                                            <span class="category-hero-carousel-pagination__sep" aria-hidden="true">|</span>
+                                            <span class="category-hero-carousel-pagination__total"><?php echo (int) $category_hero_mobile_n; ?></span>
+                                        </div>
                                         <button type="button"
-                                                class="category-hero-carousel-btn category-hero-carousel-btn--next"
+                                                class="category-hero-carousel-pagination__btn category-hero-carousel-pagination__btn--next"
                                                 data-category-hero-next
                                                 aria-controls="category-hero-carousel-track"
                                                 aria-label="<?php esc_attr_e( '다음 추천 글', 'borobill_theme' ); ?>">
                                             <span aria-hidden="true">
-                                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M10 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M10 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                             </span>
                                         </button>
-                                    </div>
-                                    <div class="category-hero-carousel-counter"
-                                         aria-live="polite"
-                                         aria-atomic="true"
-                                         aria-label="<?php echo esc_attr( sprintf( '슬라이드 %d / %d', 1, (int) $category_hero_mobile_n ) ); ?>">
-                                        <span class="category-hero-carousel-counter__current">1</span>
-                                        <span class="category-hero-carousel-counter__sep" aria-hidden="true">|</span>
-                                        <span class="category-hero-carousel-counter__total"><?php echo (int) $category_hero_mobile_n; ?></span>
                                     </div>
                                 <?php endif; ?>
                             </div>
@@ -441,11 +446,18 @@ if ( empty( $hero_posts ) && ( isset( $hero_recent_args['cat'] ) || isset( $hero
             <?php
             // 서브/자녀페이지: 타이틀(검색창 자리) + 최신순/추천순 우측 (검색창 제거)
             $is_child_page = ! $is_root_page;
+            $child_page_title = '';
+            if ( $is_child_page && $term instanceof WP_Term ) {
+                $child_page_title = borobill_get_gnb_menu_title_for_term( $term->term_id );
+                if ( '' === $child_page_title ) {
+                    $child_page_title = $term->name;
+                }
+            }
             ?>
             <section class="section section-all-posts-header<?php echo $is_child_page ? ' all-posts-header--child' : ''; ?>" aria-labelledby="all-posts-title">
                 <div class="section-inner">
                     <div class="all-posts-toolbar">
-                        <h2 id="all-posts-title" class="all-posts-title"><?php echo $is_root_page ? esc_html( '전체게시글' ) : ( $term instanceof WP_Term ? esc_html( $term->name ) : esc_html( '전체게시글' ) ); ?></h2>
+                        <h2 id="all-posts-title" class="all-posts-title"><?php echo $is_root_page ? esc_html( '전체게시글' ) : esc_html( $child_page_title ?: '전체게시글' ); ?></h2>
                         <div class="section-search section-search--modal all-posts-search">
                             <label class="screen-reader-text" for="all-posts-search-input">검색어</label>
                             <input type="search"
@@ -457,9 +469,31 @@ if ( empty( $hero_posts ) && ( isset( $hero_recent_args['cat'] ) || isset( $hero
                                    aria-label="검색 모달 열기" />
                             <button type="button" class="search-icon-btn search-btn-text" aria-label="검색" data-open-search>검색</button>
                         </div>
-                        <div class="all-posts-sort" role="group" aria-label="정렬">
-                            <button type="button" class="sort-btn active" data-sort="latest" aria-pressed="true">최신순</button>
-                            <button type="button" class="sort-btn" data-sort="recommended" aria-pressed="false">추천순</button>
+                        <div class="all-posts-toolbar-actions">
+                            <div class="all-posts-sort" role="group" aria-label="정렬">
+                                <button type="button" class="sort-btn active" data-sort="latest" aria-pressed="true">최신순</button>
+                                <button type="button" class="sort-btn" data-sort="recommended" aria-pressed="false">추천순</button>
+                            </div>
+                            <!-- <div class="post-view-mode" role="group" aria-label="게시글 보기 방식">
+                                <button type="button" class="post-view-mode__btn" data-view-mode="photo" aria-pressed="false" aria-label="사진만 보기">
+                                    <iconify-icon class="post-view-mode__icon" icon="duo-icons:app" width="1em" height="1em" aria-hidden="true"></iconify-icon>
+                                </button>
+                                <button type="button" class="post-view-mode__btn is-active" data-view-mode="list" aria-pressed="true" aria-label="목록형 보기">
+                                    <iconify-icon class="post-view-mode__icon post-view-mode__icon--flip-x" icon="fa:th-list" width="1em" height="1em" aria-hidden="true"></iconify-icon>
+                                </button>
+                                <button type="button" class="post-view-mode__btn" data-view-mode="card" aria-pressed="false" aria-label="카드형 보기">
+                                    <iconify-icon class="post-view-mode__icon" icon="ic:baseline-view-stream" width="1em" height="1em" aria-hidden="true"></iconify-icon>
+                                </button>
+                            </div> //-->
+
+                            <div class="post-view-mode" role="group" aria-label="게시글 보기 방식">
+                                <button type="button" class="post-view-mode__btn is-active" data-view-mode="list" aria-pressed="true" aria-label="목록형 보기">
+                                    <iconify-icon class="post-view-mode__icon post-view-mode__icon--flip-x" icon="fa:th-list" width="1em" height="1em" aria-hidden="true"></iconify-icon>
+                                </button>
+                                <button type="button" class="post-view-mode__btn" data-view-mode="card" aria-pressed="false" aria-label="카드형 보기">
+                                    <iconify-icon class="post-view-mode__icon" icon="ic:baseline-view-stream" width="1em" height="1em" aria-hidden="true"></iconify-icon>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -467,9 +501,30 @@ if ( empty( $hero_posts ) && ( isset( $hero_recent_args['cat'] ) || isset( $hero
 
             <?php
             // GNB 루트 기준 필터 + 검색 (해당 카테고리 트리 글만 리스트에 노출되도록 데이터 전달)
+            $filter_items = array();
+            if ( $root_term instanceof WP_Term ) {
+                foreach ( $lnb_groups as $group ) {
+                    if ( (int) $group['term_id'] !== (int) $root_term->term_id ) {
+                        continue;
+                    }
+                    foreach ( $group['children'] as $child ) {
+                        if ( empty( $child['term_id'] ) ) {
+                            continue;
+                        }
+                        $child_term = get_term( (int) $child['term_id'], 'category' );
+                        $slug       = ( $child_term && ! is_wp_error( $child_term ) ) ? $child_term->slug : sanitize_title( $child['title'] );
+                        $filter_items[] = array(
+                            'label'   => $child['title'],
+                            'slug'    => $slug,
+                            'cat_ids' => array( (int) $child['term_id'] ),
+                        );
+                    }
+                    break;
+                }
+            }
             $filter_args = [
                 'root_term'    => $root_term,
-                'filter_items' => [],
+                'filter_items' => $filter_items,
             ];
             if ( ! $is_root_page && $term instanceof WP_Term ) {
                 $filter_args['initial_group'] = $term->slug;

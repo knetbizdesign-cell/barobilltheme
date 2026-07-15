@@ -1,23 +1,41 @@
 (function () {
-    tinymce.PluginManager.add('borobill_summary', function (editor) {
-        editor.addButton('borobill_summary', {
-            text: '요약 블록',
-            icon: false,
-            onclick: function () {
-                var blocks = editor.dom.select('div.post-summary');
+    'use strict';
 
-                // 이미 있으면 추가 생성하지 않고 제거(토글 동작)
-                if (blocks && blocks.length) {
-                    blocks.forEach(function (node) {
-                        editor.dom.remove(node, true);
-                    });
-                    return;
-                }
+    function toggleSummaryBlock(editor) {
+        var blocks = editor.dom.select('div.post-summary');
+        if (blocks && blocks.length) {
+            blocks.forEach(function (node) {
+                editor.dom.remove(node, true);
+            });
+            return;
+        }
+        editor.insertContent('<div class="post-summary"><p></p></div><p></p>');
+    }
 
-                // 없을 때만 빈 요약 블록 생성 (안내 문구 없음)
-                var html = '<div class="post-summary"><p></p></div><p></p>';
-                editor.insertContent(html);
-            }
+    tinymce.PluginManager.add('borobill_editor', function (editor) {
+        editor.addCommand('borobill_toggle_summary', function () {
+            toggleSummaryBlock(editor);
+        });
+
+        editor.addButton('borobill_lineheight', {
+            text: '줄간격',
+            tooltip: '줄간격',
+            type: 'listbox',
+            values: [
+                { text: '1.4', value: '1.4' },
+                { text: '1.6', value: '1.6' },
+                { text: '1.8', value: '1.8' },
+                { text: '2.0', value: '2.0' },
+            ],
+            onselect: function (e) {
+                editor.formatter.apply('borobill_lineheight', { value: e.control.settings.value });
+            },
+        });
+
+        editor.formatter.register('borobill_lineheight', {
+            inline: 'span',
+            styles: { lineHeight: '%value' },
+            remove_similar: true,
         });
     });
 })();

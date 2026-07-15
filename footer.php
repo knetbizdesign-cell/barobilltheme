@@ -96,6 +96,7 @@ if ( ! function_exists( 'borobill_cat_url' ) ) {
             <p class="footer-company">(주)케이넷 | 대표: 이천호</p>
             <p class="footer-company">사업자등록번호 416-81-38772</p>
             <p class="footer-company">주소: 광주 북구 첨단과기로208번길 43-22, B동 1901~3호(와이어스파크) ㈜ 케이넷</p>
+            <p class="footer-company">고객센터: 일반문의 <b>1544-8385</b> | 제휴·연동 문의 <b>1544-9256</b></p>
 
             <div class="footer-bottom-row">
                 <p class="footer-copy">Copyrightⓒ KNET corp. All Rights Reserved.</p>

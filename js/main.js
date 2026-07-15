@@ -36,8 +36,10 @@
             });
         })();
 
-        // 워드프레스 REST API endpoint
-        const WP_API_URL = '/wordpress/wp-json/wp/v2/';
+        // 워드프레스 REST API endpoint (운영/로컬 경로 차이 대응)
+        const WP_API_URL = (window.borobillHeroSettings && borobillHeroSettings.restUrl)
+            ? String(borobillHeroSettings.restUrl)
+            : '/wp-json/wp/v2/';
         // DOM elements
         const $featured = $('#featured-posts'); // 추천 게시물 영역
         const $filter = $('#category-filter');  // 카테고리 필터 버튼 영역
@@ -208,7 +210,7 @@
                 }
 
                 // 데스크톱(중앙 GNB) 이상에서는 햄버거 메뉴도 닫기
-                if (window.matchMedia && window.matchMedia('(min-width: 1181px)').matches) {
+                if (window.matchMedia && window.matchMedia('(min-width: 1001px)').matches) {
                     setMobileNavOpen(false);
                 }
 
@@ -246,8 +248,10 @@
             const $slides = $carousel.find('.hero-slide');
             const $badge = $wrapper.find('.hero-badge');
             const $title = $wrapper.find('.hero-title');
-            const $dots = $wrapper.find('.hero-indicators .dot');
-            const $slideCounterCurrent = $wrapper.find('.hero-slide-counter__current');
+            const $paginationCurrent = $wrapper.find('.hero-carousel-pagination__current');
+            const $paginationWrap = $wrapper.find('.hero-carousel-pagination__counter');
+            const $paginationPrev = $wrapper.find('[data-hero-pagination-prev]');
+            const $paginationNext = $wrapper.find('[data-hero-pagination-next]');
             const $nextBtn = $wrapper.find('[data-hero-next]');
             const $nextBtnLabel = $nextBtn.find('.hero-next-btn__label');
 
@@ -279,7 +283,22 @@
                     h = h.split('').map(ch => ch + ch).join('');
                 }
                 const num = parseInt(h, 16);
-                return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+                return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255, a: 1 };
+            }
+
+            function parseCssColor(input) {
+                const raw = String(input || '').trim();
+                if (!raw) return null;
+                const asHex = hexToRgb(raw);
+                if (asHex) return asHex;
+                const mRgb = raw.match(/^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*([0-9.]+))?\s*\)$/i);
+                if (!mRgb) return null;
+                return {
+                    r: Math.round(Number(mRgb[1])),
+                    g: Math.round(Number(mRgb[2])),
+                    b: Math.round(Number(mRgb[3])),
+                    a: (typeof mRgb[4] === 'undefined' || mRgb[4] === '') ? 1 : clamp(Number(mRgb[4]), 0, 1),
+                };
             }
 
             function rgbToCss(rgb) {
@@ -400,6 +419,8 @@
                 const btnText = String($active.data('btn-text') || '게시글 바로가기');
                 const btnEnabledRaw = $active.data('btn-enabled');
                 const btnEnabled = String(typeof btnEnabledRaw === 'undefined' ? '1' : btnEnabledRaw) !== '0';
+                const btnColor = String($active.data('btn-color') || '').trim();
+                const btnTextColor = String($active.data('btn-text-color') || '').trim() || '#ffffff';
                 const gradBottom = String($active.data('grad-bottom') || '');
                 const gradEnabledRaw = $active.data('grad-enabled');
                 const gradEnabled = String(typeof gradEnabledRaw === 'undefined' ? (gradBottom ? '1' : '0') : gradEnabledRaw) !== '0';
@@ -420,6 +441,29 @@
 
                 if (bgColor) {
                     $wrapper.get(0).style.setProperty('--hero-bg-color', bgColor);
+                }
+
+                $wrapper.get(0).style.setProperty('--hero-btn-color', btnTextColor);
+
+                const applyHeroButtonColors = (rgb, opacity) => {
+                    if (!rgb) return;
+                    const a = clamp(Number(opacity), 0, 1);
+                    const hoverA = Math.min(1, a + 0.08);
+                    const border = lighten(rgb, 0.12);
+                    const borderHover = lighten(rgb, 0.18);
+                    const btnHover = darkenToLowLuminance(rgb, 0.12);
+                    $wrapper.get(0).style.setProperty('--hero-btn-bg', rgbaToCss(rgb, a));
+                    $wrapper.get(0).style.setProperty('--hero-btn-bg-hover', rgbaToCss(btnHover, hoverA));
+                    $wrapper.get(0).style.setProperty('--hero-btn-border', `rgba(${border.r}, ${border.g}, ${border.b}, ${Math.min(1, a * 0.6)})`);
+                    $wrapper.get(0).style.setProperty('--hero-btn-border-hover', `rgba(${borderHover.r}, ${borderHover.g}, ${borderHover.b}, ${Math.min(1, hoverA * 0.75)})`);
+                };
+
+                if (btnColor) {
+                    const parsed = parseCssColor(btnColor);
+                    if (parsed) {
+                        applyHeroButtonColors(parsed, typeof parsed.a === 'number' ? parsed.a : 1);
+                    }
+                } else if (bgColor) {
                     const rgb = hexToRgb(bgColor);
                     if (rgb) {
                         // 요청사항:
@@ -429,11 +473,12 @@
                         const btnHover = boostSaturation(darkenToLowLuminance(rgb, 0.64), 0.16);
                         const border = lighten(btnBase, 0.12);
                         const borderHover = lighten(btnBase, 0.18);
-                        // blur/레이어감이 살아나도록 rgba(반투명)로 적용
-                        $wrapper.get(0).style.setProperty('--hero-btn-bg', rgbaToCss(btnBase, 0.78));
-                        $wrapper.get(0).style.setProperty('--hero-btn-bg-hover', rgbaToCss(btnHover, 0.88));
-                        $wrapper.get(0).style.setProperty('--hero-btn-border', `rgba(${border.r}, ${border.g}, ${border.b}, 0.55)`);
-                        $wrapper.get(0).style.setProperty('--hero-btn-border-hover', `rgba(${borderHover.r}, ${borderHover.g}, ${borderHover.b}, 0.7)`);
+                        const a = 0.97;
+                        const hoverA = 1;
+                        $wrapper.get(0).style.setProperty('--hero-btn-bg', rgbaToCss(btnBase, a));
+                        $wrapper.get(0).style.setProperty('--hero-btn-bg-hover', rgbaToCss(btnHover, hoverA));
+                        $wrapper.get(0).style.setProperty('--hero-btn-border', `rgba(${border.r}, ${border.g}, ${border.b}, ${Math.min(1, a * 0.6)})`);
+                        $wrapper.get(0).style.setProperty('--hero-btn-border-hover', `rgba(${borderHover.r}, ${borderHover.g}, ${borderHover.b}, ${Math.min(1, hoverA * 0.75)})`);
                     }
                 }
                 // 그라데이션: 값이 비면 레이어 자체를 끔(기본값으로 돌아가지 않게)
@@ -445,17 +490,11 @@
                     $wrapper.get(0).style.setProperty('--hero-grad-opacity', '0');
                 }
 
-                if ($dots.length) {
-                    $dots.removeClass('is-active').removeAttr('aria-current');
-                    $dots.eq(idx).addClass('is-active').attr('aria-current', 'true');
-                }
-
-                if ($slideCounterCurrent.length) {
-                    $slideCounterCurrent.text(String(idx + 1));
-                    const $ctr = $slideCounterCurrent.closest('.hero-slide-counter');
+                if ($paginationCurrent.length) {
+                    $paginationCurrent.text(String(idx + 1));
                     const tot = $slides.length;
-                    if ($ctr.length && tot) {
-                        $ctr.attr('aria-label', '슬라이드 ' + (idx + 1) + ' / ' + tot);
+                    if ($paginationWrap.length && tot) {
+                        $paginationWrap.attr('aria-label', '슬라이드 ' + (idx + 1) + ' / ' + tot);
                     }
                 }
             }
@@ -482,10 +521,42 @@
                 applySlide(current + 1);
             });
 
-            $wrapper.off('click.borobillHeroDot').on('click.borobillHeroDot', '.hero-indicators .dot', function () {
-                const idx = Number($(this).data('index'));
-                if (!Number.isFinite(idx)) return;
-                applySlide(idx);
+            function openActiveHeroBannerLink() {
+                const $active = $slides.eq(current);
+                const btnEnabledRaw = $active.data('btn-enabled');
+                const btnEnabled = String(typeof btnEnabledRaw === 'undefined' ? '1' : btnEnabledRaw) !== '0';
+                const btnUrl = String($active.data('btn-url') || '').trim();
+
+                if (!(btnEnabled && btnUrl)) {
+                    return false;
+                }
+
+                const win = window.open(btnUrl, '_blank', 'noopener,noreferrer');
+                if (win) {
+                    win.opener = null;
+                }
+                return true;
+            }
+
+            let heroBannerIgnoreClick = false;
+
+            $wrapper.off('click.borobillHeroBannerTap').on('click.borobillHeroBannerTap', function (e) {
+                if (heroBannerIgnoreClick) {
+                    heroBannerIgnoreClick = false;
+                    return;
+                }
+                if ($(e.target).closest('.hero-carousel-pagination, [data-hero-next], a, button').length) {
+                    return;
+                }
+                openActiveHeroBannerLink();
+            });
+
+            $paginationPrev.off('click.borobillHeroPagination').on('click.borobillHeroPagination', function () {
+                applySlide(current - 1);
+            });
+
+            $paginationNext.off('click.borobillHeroPagination').on('click.borobillHeroPagination', function () {
+                applySlide(current + 1);
             });
 
             let timer = null;
@@ -570,6 +641,8 @@
                         return;
                     }
 
+                    heroBannerIgnoreClick = true;
+
                     if (dx < 0) {
                         applySlide(current + 1);
                     } else {
@@ -580,24 +653,24 @@
             startAuto();
         })();
 
-        // --- 카테고리 추천 아티클 모바일 슬라이더 (<768px) --- //
+        // --- 카테고리 추천 아티클 모바일 슬라이더 (≤1000px) --- //
         (function initCategoryHeroCarousel() {
             const $shell = $('.layout--category .category-hero-carousel-shell');
             const $track = $shell.find('#category-hero-carousel-track');
             const $slides = $shell.find('.category-hero-carousel-slide');
             const $prev = $shell.find('[data-category-hero-prev]');
             const $next = $shell.find('[data-category-hero-next]');
-            const $counterCur = $shell.find('.category-hero-carousel-counter__current');
-            const $counterWrap = $shell.find('.category-hero-carousel-counter');
+            const $counterCur = $shell.find('.category-hero-carousel-pagination__current');
+            const $counterWrap = $shell.find('.category-hero-carousel-pagination__counter');
 
             if (!$shell.length || !$track.length || !$slides.length) {
                 return;
             }
 
-            const mqMobile = window.matchMedia ? window.matchMedia('(max-width: 767px)') : null;
+            const mqMobile = window.matchMedia ? window.matchMedia('(max-width: 1000px)') : null;
 
             function isMobileViewport() {
-                return mqMobile ? mqMobile.matches : window.innerWidth <= 767;
+                return mqMobile ? mqMobile.matches : window.innerWidth <= 1000;
             }
 
             let current = 0;
@@ -701,7 +774,9 @@
         let customFilterItems = [];
         let rootCategoryIds = [];
         let rootLabelByCatId = {}; // {categoryId: rootLabel}
+        let gnbLabelByCatId = {}; // {categoryId: gnbMenuTitle}
         let listSortOrder = 'latest'; // 'latest' | 'recommended' — 카테고리 서브페이지 전체게시글 정렬
+        let postViewMode = 'list'; // 'photo' | 'list' | 'card' — 카테고리 전체게시글 보기 방식
         let feedObserver = null;
         let feedSentinelEl = null;
         let lastIsMobileFeed = null;
@@ -709,8 +784,39 @@
 
         const rawFilterItems = $filter.length ? $filter.data('filter-items') : null;
         const rawRootCatIds = $filter.length ? $filter.data('root-cat-ids') : null;
+        const $indexGnbBadgeLabels = $('#borobill-index-gnb-badge-labels');
+
+        function parseIndexGnbData($el, attrName) {
+            if (!$el.length) {
+                return null;
+            }
+            const raw = $el.attr(attrName);
+            if (!raw) {
+                return null;
+            }
+            try {
+                return JSON.parse(raw);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        const rawGnbBadgeLabels = parseIndexGnbData($indexGnbBadgeLabels, 'data-gnb-badge-labels');
+        const indexGnbRootIds = (parseIndexGnbData($indexGnbBadgeLabels, 'data-gnb-root-ids') || [])
+            .map((id) => Number(id))
+            .filter((id) => !Number.isNaN(id));
+        const isIndexListPage = $indexGnbBadgeLabels.length > 0;
+        const isCategoryRootListPage = $('.layout--category[data-category-root-page="1"]').length > 0;
+        const showFeedListTags = false;
         customFilterItems = parseFilterItems(rawFilterItems);
         rootCategoryIds = parseNumericArray(rawRootCatIds);
+
+        const filterScope = $filter.length ? String($filter.data('filter-scope') || '') : '';
+        if (filterScope === 'global' && customFilterItems.length) {
+            filterOrder = customFilterItems
+                .map(item => item.label || item.name || '')
+                .filter(name => name.length > 0);
+        }
 
         function stripHtml(input) {
             const s = String(input || '');
@@ -789,31 +895,59 @@
             return out;
         }
 
+        function buildIndexArticleTagsBlock(post, maxTags) {
+            if (!showFeedListTags) {
+                return '';
+            }
+            const limit = Number.isFinite(maxTags) && maxTags > 0 ? maxTags : 3;
+            const tagNames = getEmbeddedTermNames(post, 'post_tag').slice(0, limit);
+            if (!tagNames.length) {
+                return '';
+            }
+            const tagsHtml = tagNames.map((name) => (
+                `<span class="article-tag" draggable="false"><span class="article-tag__text"># ${escapeHtml(name)}</span></span>`
+            )).join('');
+            return `<div class="article-tags article-tags--index" aria-label="태그">${tagsHtml}</div>`;
+        }
+
         // --- 데이터 fetch --- //
-        async function fetchAllPosts() {
+        // content 제외 + embed 최소화로 운영 전송량/TTFB 감소
+        const POST_LIST_FIELDS = 'id,date,link,status,title,excerpt,categories,borobill_subtitle,borobill_views,_links';
+
+        function buildPostsUrl(page, perPage, categoryIds) {
+            const catParam = (Array.isArray(categoryIds) && categoryIds.length)
+                ? `&categories=${categoryIds.join(',')}`
+                : '';
+            return `${WP_API_URL}posts?per_page=${perPage}&page=${page}&_embed=wp:featuredmedia,wp:term&_fields=${POST_LIST_FIELDS}${catParam}`;
+        }
+
+        async function fetchPostsPage(page, perPage, categoryIds) {
+            const res = await fetch(buildPostsUrl(page, perPage, categoryIds));
+            if (!res.ok) {
+                return { data: [], totalPages: 0 };
+            }
+            const data = await res.json();
+            const totalPages = parseInt(res.headers.get('X-WP-TotalPages') || '0', 10) || 0;
+            return {
+                data: Array.isArray(data) ? data : [],
+                totalPages: Number.isNaN(totalPages) ? 0 : totalPages,
+            };
+        }
+
+        async function fetchAllPosts(categoryIds) {
             const collected = [];
             let page = 1;
             let totalPages = 0;
 
             while (true) {
-                const url = `${WP_API_URL}posts?per_page=100&page=${page}&_embed`;
-                const res = await fetch(url);
-                if (!res.ok) {
-                    break;
-                }
-                const data = await res.json();
-                if (Array.isArray(data) && data.length) {
+                const { data, totalPages: pages } = await fetchPostsPage(page, 100, categoryIds);
+                if (data.length) {
                     collected.push(...data);
                 }
-
-                if (!totalPages) {
-                    const headerTotalPages = parseInt(res.headers.get('X-WP-TotalPages') || '0', 10);
-                    if (!Number.isNaN(headerTotalPages) && headerTotalPages > 0) {
-                        totalPages = headerTotalPages;
-                    }
+                if (!totalPages && pages > 0) {
+                    totalPages = pages;
                 }
-
-                if ((totalPages && page >= totalPages) || !Array.isArray(data) || data.length < 100) {
+                if ((totalPages && page >= totalPages) || data.length < 100) {
                     break;
                 }
                 page += 1;
@@ -822,38 +956,54 @@
             return collected;
         }
 
-        Promise.all([
-            fetch(WP_API_URL+'categories?per_page=100').then(res=>res.json()),
-            fetchAllPosts(),
-        ]).then(([cats, posts])=>{
-            allCategories = cats;
-            allPosts = posts;
-            categoryChildrenMap = buildChildrenMap();
-            categoryGroups = buildCategoryGroups();
-            initializeFilterState();
+        function collectSubtreeIdsFromCategories(rootIds, categories) {
+            const byParent = {};
+            (categories || []).forEach((cat) => {
+                const id = Number(cat && cat.id);
+                const parent = Number(cat && cat.parent) || 0;
+                if (Number.isNaN(id)) return;
+                if (!byParent[parent]) byParent[parent] = [];
+                byParent[parent].push(id);
+            });
+            const out = [];
+            const walk = (id) => {
+                out.push(id);
+                (byParent[id] || []).forEach(walk);
+            };
+            (rootIds || []).forEach((id) => {
+                const n = Number(id);
+                if (!Number.isNaN(n)) walk(n);
+            });
+            return Array.from(new Set(out));
+        }
+
+        function applyAllowedCategoryFilter(posts) {
+            if (!allowedCategoryIds.length) {
+                return posts;
+            }
+            const allowedSet = new Set(allowedCategoryIds);
+            return posts.filter((post) => (
+                post.categories && post.categories.some((cid) => allowedSet.has(cid))
+            ));
+        }
+
+        function finishListBootstrap() {
+            gnbLabelByCatId = buildGnbLabelByCatId();
             rootLabelByCatId = buildRootLabelMap();
 
-            // 카테고리 서브페이지: 현재 카테고리(GNB 하위)만 리스트에 노출되도록 초기 그룹 적용
             const initialGroup = $filter.length ? String($filter.data('initial-group') || '').trim() : '';
             if (initialGroup && filterGroupMap[initialGroup]) {
                 nowGroup = initialGroup;
                 currentCatGroupIDs = filterGroupMap[nowGroup] || filterGroupMap['all'];
             }
 
-            if (allowedCategoryIds.length) {
-                const allowedSet = new Set(allowedCategoryIds);
-                allPosts = allPosts.filter(post=>{
-                    return post.categories && post.categories.some(cid=>allowedSet.has(cid));
-                });
-            }
-
             renderFilter();
             bindInlineSearch();
             bindAllPostsSort();
+            bindPostViewMode();
             renderFeatured();
             renderList();
 
-            // 모바일/데스크톱 전환 시 목록 모드 전환
             $(window).off('resize.borobillFeed').on('resize.borobillFeed', function () {
                 const nowMobile = isMobileFeed();
                 if (lastIsMobileFeed === null) {
@@ -867,6 +1017,32 @@
                     renderList();
                 }
             });
+        }
+
+        fetch(WP_API_URL + 'categories?per_page=100')
+            .then((res) => res.json())
+            .then(async (cats) => {
+            allCategories = Array.isArray(cats) ? cats : [];
+            categoryChildrenMap = buildChildrenMap();
+            categoryGroups = buildCategoryGroups();
+            initializeFilterState();
+
+            // 카테고리 페이지: 서버에서 해당 트리만 조회 (전체 카탈로그 다운로드 방지)
+            const fetchCatIds = rootCategoryIds.length
+                ? collectSubtreeIdsFromCategories(rootCategoryIds, allCategories)
+                : [];
+
+            // 1) 첫 화면(6개)만 먼저 받아 스켈레톤 즉시 제거
+            const firstPage = await fetchPostsPage(1, DEFAULT_LIST_PER_PAGE, fetchCatIds);
+            allPosts = applyAllowedCategoryFilter(firstPage.data);
+            finishListBootstrap();
+
+            // 2) 나머지 전체는 백그라운드 — 필터/검색/페이지네이션용 데이터만 채움
+            //    목록 카드 DOM은 다시 그리지 않음(두 번째 등장 효과 방지)
+            fetchAllPosts(fetchCatIds).then((posts) => {
+                allPosts = applyAllowedCategoryFilter(posts);
+                refreshListPaginationOnly({ silent: true });
+            }).catch(() => {});
 
         });
 
@@ -952,9 +1128,121 @@
             return getCategoryName(post.categories[0]);
         }
 
-        /** 리스트/추천 카드 뱃지용: 실제 카테고리명(하위 우선). GNB 직계 자식이 있으면 그 이름, 없으면 루트명 */
+        function buildGnbLabelByCatId() {
+            const map = {};
+            customFilterItems.forEach(item => {
+                const label = item.label || item.name || '';
+                if (!label) {
+                    return;
+                }
+                let ids = [];
+                if (Array.isArray(item.cat_ids) && item.cat_ids.length) {
+                    ids = item.cat_ids;
+                } else if (Array.isArray(item.category_ids) && item.category_ids.length) {
+                    ids = item.category_ids;
+                } else if (item.id) {
+                    ids = [item.id];
+                }
+                ids.forEach(id => {
+                    const numId = Number(id);
+                    if (!Number.isNaN(numId)) {
+                        map[numId] = label;
+                    }
+                });
+            });
+
+            if (rawGnbBadgeLabels && typeof rawGnbBadgeLabels === 'object') {
+                Object.keys(rawGnbBadgeLabels).forEach((key) => {
+                    const numId = Number(key);
+                    const label = String(rawGnbBadgeLabels[key] || '');
+                    if (!Number.isNaN(numId) && label) {
+                        map[numId] = label;
+                    }
+                });
+            }
+
+            return map;
+        }
+
+        /** index: GNB 1차(헤더) 메뉴명 — 카테고리 트리를 올라가며 매칭 */
+        function getIndexGnbRootLabelForPost(post) {
+            if (!rawGnbBadgeLabels || !indexGnbRootIds.length || !post || !post.categories || !post.categories.length) {
+                return '';
+            }
+
+            const rootIdSet = new Set(indexGnbRootIds);
+
+            for (const cid of post.categories) {
+                let currentId = Number(cid);
+                const guard = new Set();
+
+                while (currentId && !Number.isNaN(currentId) && !guard.has(currentId)) {
+                    guard.add(currentId);
+
+                    if (rootIdSet.has(currentId)) {
+                        return gnbLabelByCatId[currentId] || '';
+                    }
+
+                    const mapped = gnbLabelByCatId[currentId];
+                    if (mapped) {
+                        return mapped;
+                    }
+
+                    const cat = allCategories.find(c => c.id === currentId);
+                    if (!cat || !cat.parent) {
+                        break;
+                    }
+                    currentId = Number(cat.parent);
+                }
+            }
+
+            return '';
+        }
+
+        /** 리스트/추천 카드 뱃지용: GNB 메뉴명 우선, 없으면 카테고리명 */
         function getDisplayCategoryLabelForPost(post) {
             if (!post || !post.categories || !post.categories.length) return '';
+
+            if (rawGnbBadgeLabels) {
+                const indexRootLabel = getIndexGnbRootLabelForPost(post);
+                if (indexRootLabel) {
+                    return indexRootLabel;
+                }
+            }
+
+            function findGnbLabelForCategoryId(cid) {
+                if (rawGnbBadgeLabels) {
+                    let currentId = Number(cid);
+                    const guard = new Set();
+                    while (currentId && !Number.isNaN(currentId) && !guard.has(currentId)) {
+                        guard.add(currentId);
+                        const gnbLabel = gnbLabelByCatId[currentId];
+                        if (gnbLabel) {
+                            return gnbLabel;
+                        }
+                        const cat = allCategories.find(c => c.id === currentId);
+                        if (!cat || !cat.parent) {
+                            break;
+                        }
+                        currentId = Number(cat.parent);
+                    }
+                    return '';
+                }
+
+                return gnbLabelByCatId[cid] || '';
+            }
+
+            for (const cid of post.categories) {
+                const gnbLabel = findGnbLabelForCategoryId(cid);
+                if (gnbLabel) {
+                    return gnbLabel;
+                }
+            }
+
+            if (rawGnbBadgeLabels) {
+                return getRootLabelForPost(post);
+            }
+
             const rootIds = filterOrder.map(name => {
                 const p = allCategories.find(c => c.name === name);
                 return p ? p.id : null;
@@ -1073,7 +1361,7 @@
             return configs;
         }
 
-        // --- 추천 게시물 렌더링 (최신 3개) --- //
+        // --- 추천 게시물 렌더링 (관리자 미지정 시 조회수 추천순 3개) --- //
         function getPostSubtitlePlain(post) {
             if (!post) {
                 return '';
@@ -1085,17 +1373,20 @@
         }
 
         function renderFeatured() {
+            // PHP(recommended.php)가 이미 렌더한 경우 REST 전체 로드 결과를 덮어쓰지 않음
+            if ($featured.length && $featured.attr('data-php-rendered') === '1' && $featured.children().length) {
+                return;
+            }
+            const getViews = (p) => (p && (p.borobill_views != null ? p.borobill_views : (p.meta && p.meta._bb_views))) || 0;
             let recHTML = '';
             let picked = [...allPosts]
-                .filter(p=>p.status==='publish')
-                .sort((a,b)=>(new Date(b.date) - new Date(a.date)))
-                .slice(0,3);
+                .filter(p => p.status === 'publish')
+                .sort((a, b) => (getViews(b) - getViews(a)) || (new Date(b.date) - new Date(a.date)))
+                .slice(0, 3);
 
-            const getViews = (p) => (p && (p.borobill_views != null ? p.borobill_views : (p.meta && p.meta._bb_views))) || 0;
             for (let post of picked) {
                 let thumb = post._embedded && post._embedded['wp:featuredmedia'] ? post._embedded['wp:featuredmedia'][0].source_url : '/wordpress/wp-content/themes/borobill_theme/images/default.png';
                 let cat = escapeHtml(getDisplayCategoryLabelForPost(post));
-                const views = formatViewCount(getViews(post));
                 const subPlain = getPostSubtitlePlain(post);
                 const subBlock = subPlain
                     ? `<p class="featured-subdesc"><a class="featured-subdesc__link" href="${escapeAttr(post.link)}">${escapeHtml(subPlain)}</a></p>`
@@ -1107,10 +1398,6 @@
 <div class="featured-meta article-meta">
     <span class="badge badge-small">${cat}</span>
     <span class="meta-date">${formatDate(post.date)}</span>
-    <span class="featured-views">
-        <span class="featured-views__label">조회수</span>
-        <span class="featured-views__count">${views}</span>
-    </span>
 </div>
 <h3 class="featured-title"><a href="${post.link}">${post.title.rendered}</a></h3>
 ${subBlock}
@@ -1138,13 +1425,12 @@ ${subBlock}
                     const title = stripHtml(post?.title?.rendered || '');
                     const subtitle = stripHtml(post?.borobill_subtitle || post?.meta?._borobill_subtitle || '');
                     const excerpt = stripHtml(post?.excerpt?.rendered || '');
-                    const content = stripHtml(post?.content?.rendered || '');
                     const badge = stripHtml(getRootLabelForPost(post) || '');
                     const tagNames = getEmbeddedTermNames(post, 'post_tag').join(' ');
                     const categoryNames = getEmbeddedTermNames(post, 'category').join(' ');
 
                     const hayNorm = normalizeForSearch(
-                        [title, subtitle, badge, excerpt, content, tagNames, categoryNames].join(' ')
+                        [title, subtitle, badge, excerpt, tagNames, categoryNames].join(' ')
                     );
                     return hayNorm.includes(qNorm);
                 });
@@ -1176,6 +1462,49 @@ ${subBlock}
                 currentViewPage = 1;
                 teardownMobileFeedObserver();
                 renderList();
+            });
+        }
+
+        function applyPostViewMode() {
+            if (!$list.length || !$('.post-view-mode').length) {
+                return;
+            }
+
+            $list.removeClass('post-list--view-photo post-list--view-list post-list--view-card');
+            if (postViewMode === 'photo' || postViewMode === 'list' || postViewMode === 'card') {
+                $list.addClass('post-list--view-' + postViewMode);
+            }
+        }
+
+        function bindPostViewMode() {
+            const $viewWrap = $('.post-view-mode');
+            if (!$viewWrap.length) {
+                return;
+            }
+
+            const $initialActive = $viewWrap.find('.post-view-mode__btn.is-active').first();
+            if ($initialActive.length) {
+                const initialMode = String($initialActive.data('view-mode') || '');
+                if (initialMode === 'photo' || initialMode === 'list' || initialMode === 'card') {
+                    postViewMode = initialMode;
+                }
+            }
+
+            applyPostViewMode();
+
+            $viewWrap.off('click.borobillViewMode').on('click.borobillViewMode', '.post-view-mode__btn', function () {
+                const mode = String($(this).data('view-mode') || '');
+                if (mode !== 'photo' && mode !== 'list' && mode !== 'card') {
+                    return;
+                }
+                if (mode === postViewMode) {
+                    return;
+                }
+
+                postViewMode = mode;
+                $viewWrap.find('.post-view-mode__btn').removeClass('is-active').attr('aria-pressed', 'false');
+                $(this).addClass('is-active').attr('aria-pressed', 'true');
+                applyPostViewMode();
             });
         }
 
@@ -1212,31 +1541,46 @@ ${subBlock}
         }
 
         function renderPagination(totalPages, page) {
-            // 모바일: 기본은 페이지네이션 숨김(무한 피드) / "전체"에서는 페이지네이션 사용
+            // 모바일: 기본은 페이지네이션 숨김(무한 피드) / "전체"에서는 페이지네이션 허용
             if (isMobileFeed() && String(nowGroup) !== 'all') {
-                $pagination.empty();
+                $pagination.removeClass('pagination--hero').empty();
                 return;
             }
             if (totalPages <= 1) {
-                $pagination.empty();
+                $pagination.removeClass('pagination--hero').empty();
                 return;
             }
 
-            // 요청: 페이지 번호는 6개까지만 노출 (일반적인 그룹형 프론트엔드 페이지네이션)
-            const windowSize = Math.min(6, totalPages);
-            const groupIndex = Math.floor((page - 1) / windowSize);
-            const start = groupIndex * windowSize + 1;
-            const end = Math.min(totalPages, start + windowSize - 1);
+            // 페이지 번호는 최대 5개, 나머지는 줄임표
+            function getPageItems(current, total) {
+                if (total <= 5) {
+                    const all = [];
+                    for (let i = 1; i <= total; i++) all.push(i);
+                    return all;
+                }
+                if (current <= 3) {
+                    return [1, 2, 3, 4, 'ellipsis', total];
+                }
+                if (current >= total - 2) {
+                    return [1, 'ellipsis', total - 3, total - 2, total - 1, total];
+                }
+                return [1, 'ellipsis', current - 1, current, current + 1, 'ellipsis', total];
+            }
 
+            $pagination.removeClass('pagination--hero');
             let html = '';
             html += `<button class="page-btn nav prev" type="button" data-action="prev" aria-label="이전 페이지" ${page <= 1 ? 'disabled' : ''}>
                 <span class="page-icon page-icon--prev" aria-hidden="true"></span>
             </button>`;
 
-            for (let i = start; i <= end; i++) {
-                const isActive = i === page;
-                html += `<button class="page-btn${isActive ? ' active' : ''}" type="button" data-page="${i}" ${isActive ? 'aria-current="page"' : ''} aria-label="${i} 페이지">${i}</button>`;
-            }
+            getPageItems(page, totalPages).forEach((item) => {
+                if (item === 'ellipsis') {
+                    html += `<span class="page-ellipsis" aria-hidden="true">…</span>`;
+                    return;
+                }
+                const isActive = item === page;
+                html += `<button class="page-btn${isActive ? ' active' : ''}" type="button" data-page="${item}" ${isActive ? 'aria-current="page"' : ''} aria-label="${item} 페이지">${item}</button>`;
+            });
 
             html += `<button class="page-btn nav next" type="button" data-action="next" aria-label="다음 페이지" ${page >= totalPages ? 'disabled' : ''}>
                 <span class="page-icon page-icon--next" aria-hidden="true"></span>
@@ -1254,7 +1598,7 @@ ${subBlock}
         }
 
         function isMobileInfiniteFeedMode() {
-            return isMobileFeed() && String(nowGroup) !== 'all';
+            return false;
         }
 
         function ensureMobileFeedSentinel() {
@@ -1317,49 +1661,66 @@ ${subBlock}
             feedObserver.observe(sentinel);
         }
 
+        function refreshListPaginationOnly(options) {
+            const silent = !!(options && options.silent);
+            const filtered = getFilteredSortedPosts();
+            const perPage = getListPerPage();
+            const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+            const page = Math.min(Math.max(1, currentViewPage), totalPages);
+            currentViewPage = page;
+            renderPagination(totalPages, page);
+            if (silent) {
+                // scroll-reveal 재등장 애니메이션 방지
+                $pagination.addClass('is-visible reveal');
+                $pagination.find('.reveal').addClass('is-visible');
+            }
+            lastIsMobileFeed = isMobileFeed();
+            if (isMobileInfiniteFeedMode()) {
+                setupMobileFeedObserver(totalPages);
+            } else {
+                teardownMobileFeedObserver();
+            }
+        }
+
         function renderList() {
             const filtered = getFilteredSortedPosts();
             const total = filtered.length;
             const perPage = getListPerPage();
             const totalPages = Math.max(1, Math.ceil(total / perPage));
             const page = Math.min(Math.max(1, currentViewPage), totalPages);
-            const sliced = isMobileInfiniteFeedMode()
-                ? filtered.slice(0, page * perPage) // 모바일: 누적 노출(무한 피드)
-                : filtered.slice((page - 1) * perPage, page * perPage); // 데스크톱/태블릿 + (모바일 전체): 페이지별 노출
+            const sliced = filtered.slice((page - 1) * perPage, page * perPage);
 
-            const getViews = (p) => (p && (p.borobill_views != null ? p.borobill_views : (p.meta && p.meta._bb_views))) || 0;
             let listHTML = '';
             for (let post of sliced) {
                 let thumb = post._embedded && post._embedded['wp:featuredmedia'] ? post._embedded['wp:featuredmedia'][0].source_url : '/wordpress/wp-content/themes/borobill_theme/images/default.png';
                 const cat = escapeHtml(getDisplayCategoryLabelForPost(post));
-                const views = formatViewCount(getViews(post));
                 const listSubPlain = getPostSubtitlePlain(post);
+                const plainTitle = post.title.rendered.replace(/<[^>]*>?/gm, '');
                 const listSubBlock = listSubPlain
-                    ? `<p class="article-subtitle"><a class="article-subtitle__link" href="${escapeAttr(post.link)}">${escapeHtml(listSubPlain)}</a></p>`
+                    ? `<p class="article-subtitle">${escapeHtml(listSubPlain)}</p>`
                     : '';
-                listHTML += `<article class="article-card article-card--feed">
+                const listTagsBlock = buildIndexArticleTagsBlock(post, 3);
+                listHTML += `<a href="${escapeAttr(post.link)}" class="article-card__link" aria-label="${escapeAttr(plainTitle)}">
+<article class="article-card article-card--feed">
 <div class="article-info">
     <div class="article-meta">
         <span class="badge badge-small">${cat}</span>
         <span class="meta-date">${formatDate(post.date)}</span>
-        <span class="featured-views">
-            <span class="featured-views__label">조회수</span>
-            <span class="featured-views__count">${views}</span>
-        </span>
     </div>
-    <h3 class="article-title"><a href="${post.link}">${post.title.rendered}</a></h3>
+    <h3 class="article-title">${post.title.rendered}</h3>
     ${listSubBlock}
+    ${listTagsBlock}
 </div>
 <div class="article-thumb-wrap">
-    <a href="${post.link}">
-        <img src="${thumb}" class="article-thumb" alt="${post.title.rendered.replace(/<[^>]*>?/gm, '')}" />
-    </a>
+    <img src="${thumb}" class="article-thumb" alt="${escapeAttr(plainTitle)}" />
 </div>
-</article>`;
+</article>
+</a>`;
             }
             // 초기 스켈레톤 제거(레이아웃 안정화 후 실제 콘텐츠로 교체)
             $list.removeClass('post-list--skeleton').attr('aria-busy', 'false');
             $list.html(listHTML);
+            applyPostViewMode();
             renderPagination(totalPages, page);
             lastIsMobileFeed = isMobileFeed();
             if (isMobileInfiniteFeedMode()) {
@@ -1412,17 +1773,6 @@ ${subBlock}
                 .replace(/"/g, '&quot;');
         }
 
-        function formatViewCount(n) {
-            const v = Number(n);
-            if (!Number.isFinite(v) || v < 0) {
-                return '0';
-            }
-            try {
-                return v.toLocaleString('ko-KR');
-            } catch (e) {
-                return String(v);
-            }
-        }
         function getCategoryName(cid) {
             let cat = allCategories.find(c=>c.id===cid);
             return cat ? cat.name : '';
@@ -1473,5 +1823,93 @@ ${subBlock}
 
             return values.map(value => parseInt(value, 10)).filter(id => !Number.isNaN(id));
         }
+
+        // --- 하단 배너 멀티슬라이드 캐러셀 --- //
+        (function initBottomCtaCarousel() {
+            const $section = $('[data-bottom-cta-carousel]');
+            if (!$section.length) return;
+
+            const $carousel = $section.find('.bottom-cta-carousel');
+            const $slides   = $carousel.children('.bottom-cta-slide');
+            if (!$carousel.length || $slides.length < 2) return;
+
+            const settings = (window.borobillBottomBannerSettings && typeof window.borobillBottomBannerSettings === 'object')
+                ? window.borobillBottomBannerSettings
+                : {};
+            const autoDelaySec  = Number(settings.autoDelay);
+            const durationSec   = Number(settings.duration);
+            const effect        = String(settings.effect || 'default');
+            const autoDelayMs   = Number.isFinite(autoDelaySec) ? Math.max(0, autoDelaySec * 1000) : 6000;
+
+            if (Number.isFinite(durationSec) && durationSec > 0) {
+                $carousel.get(0).style.setProperty('--cta-duration', `${durationSec}s`);
+            }
+
+            // overflow clip 은 캐러셀, transform 은 내부 트랙 (같은 요소에 같이 쓰면 밀렸다가 되돌아감)
+            let $track = $carousel.children('.bottom-cta-track');
+            if (!$track.length) {
+                $slides.wrapAll('<div class="bottom-cta-track"></div>');
+                $track = $carousel.children('.bottom-cta-track');
+            }
+            const $trackSlides = $track.children('.bottom-cta-slide');
+            const $paginationPrev = $section.find('[data-bottom-cta-pagination-prev]');
+            const $paginationNext = $section.find('[data-bottom-cta-pagination-next]');
+
+            // 효과 클래스
+            $carousel.addClass('is-carousel');
+            if (effect === 'smooth') {
+                $carousel.addClass('effect-smooth');
+            } else if (effect === 'bounce') {
+                $carousel.addClass('effect-bounce');
+            }
+
+            let current = 0;
+            const total = $trackSlides.length;
+
+            function applySlide(nextIndex) {
+                const idx = ((nextIndex % total) + total) % total;
+                current = idx;
+                $track.get(0).style.transform = `translateX(${-idx * 100}%)`;
+                $trackSlides.removeClass('is-active').attr('aria-hidden', 'true');
+                $trackSlides.eq(idx).addClass('is-active').attr('aria-hidden', 'false');
+            }
+
+            // 초기 동기화
+            applySlide(current);
+
+            let timer = null;
+            function stopAuto() {
+                if (timer) { window.clearInterval(timer); timer = null; }
+            }
+            function startAuto() {
+                if (!autoDelayMs) return;
+                stopAuto();
+                timer = window.setInterval(() => applySlide(current + 1), autoDelayMs);
+            }
+
+            function go(delta) {
+                applySlide(current + delta);
+                startAuto();
+            }
+
+            $paginationPrev.off('click.bottomCtaPag').on('click.bottomCtaPag', function (e) {
+                e.preventDefault();
+                go(-1);
+            });
+            $paginationNext.off('click.bottomCtaPag').on('click.bottomCtaPag', function (e) {
+                e.preventDefault();
+                go(1);
+            });
+
+            $section.off('mouseenter.bottomCta focusin.bottomCta').on('mouseenter.bottomCta focusin.bottomCta', stopAuto);
+            $section.off('mouseleave.bottomCta focusout.bottomCta').on('mouseleave.bottomCta focusout.bottomCta', startAuto);
+
+            document.addEventListener('visibilitychange', function () {
+                if (document.hidden) { stopAuto(); } else { startAuto(); }
+            });
+
+            startAuto();
+        })();
+
     });
 })(jQuery);

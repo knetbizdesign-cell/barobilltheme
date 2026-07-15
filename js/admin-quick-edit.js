@@ -17,27 +17,9 @@ jQuery(function ($) {
         } else {
             $qeRow.find('.borobill-qe-thumb').attr('src', '').hide();
         }
-
-        var $rt = $row.find('.borobill-col-rt');
-        var rt = 3;
-        if ($rt.length) {
-            var rtVal = $rt.attr('data-reading-time');
-            rt = (rtVal !== undefined && rtVal !== '') ? parseInt(rtVal, 10) : 3;
-            if (isNaN(rt) || rt < 0) rt = 3;
-        }
-        $qeRow.find('.borobill-qe-reading-time').val(rt);
-
-        var $views = $row.find('.borobill-col-views');
-        var views = 0;
-        if ($views.length) {
-            var vVal = $views.attr('data-views');
-            views = (vVal !== undefined && vVal !== '') ? parseInt(vVal, 10) : 0;
-            if (isNaN(views) || views < 0) views = 0;
-        }
-        $qeRow.find('.borobill-qe-views').val(views);
     }
 
-    // 빠른편집 열릴 때 현재 글의 썸네일·리딩타임·조회수 값을 필드에 채우기 (WP DOM 반영 후 한 번 더 실행)
+    // 빠른편집 열릴 때 현재 글의 썸네일 값을 필드에 채우기 (WP DOM 반영 후 한 번 더 실행)
     $(document).on('click', 'a.editinline', function () {
         var $row = $(this).closest('tr');
         var postId = $row.attr('id') ? $row.attr('id').replace('post-', '') : '';
