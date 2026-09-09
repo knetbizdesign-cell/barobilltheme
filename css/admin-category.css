@@ -87,8 +87,6 @@
 }
 
 .taxonomy-category.term-php #edittag .form-field.term-name-wrap,
-.taxonomy-category.term-php #edittag .form-field.term-slug-wrap,
-.taxonomy-category.term-php #edittag .form-field.term-parent-wrap,
 .taxonomy-category.term-php #edittag .form-field.term-description-wrap {
     display: none;
 }

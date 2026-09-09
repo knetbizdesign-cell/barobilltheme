@@ -12,6 +12,9 @@
         editor.insertContent('<div class="post-summary"><p></p></div><p></p>');
     }
 
+	 if (typeof tinymce === 'undefined' || !tinymce.PluginManager) {
+        return;
+    }
     tinymce.PluginManager.add('borobill_editor', function (editor) {
         editor.addCommand('borobill_toggle_summary', function () {
             toggleSummaryBlock(editor);
@@ -32,10 +35,14 @@
             },
         });
 
-        editor.formatter.register('borobill_lineheight', {
-            inline: 'span',
-            styles: { lineHeight: '%value' },
-            remove_similar: true,
+        editor.on('init', function () {
+            if (editor.formatter && typeof editor.formatter.register === 'function') {
+                editor.formatter.register('borobill_lineheight', {
+                    inline: 'span',
+                    styles: { lineHeight: '%value' },
+                    remove_similar: true,
+                });
+            }
         });
     });
 })();

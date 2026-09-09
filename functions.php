@@ -504,7 +504,7 @@ function borobill_register_rest_post_fields() {
                 if ( $post_id <= 0 ) {
                     return 0;
                 }
-                $views = get_post_meta( $post_id, '_bb_views', true );
+                $views = get_post_meta( $post_id, '_borobill_post_views', true );
                 return is_numeric( $views ) ? (int) $views : 0;
             },
             'schema' => array(
@@ -1572,7 +1572,7 @@ function borobill_get_recommended_posts( $args = array() ) {
         'post_status'         => 'publish',
         'posts_per_page'      => $limit - count( $posts ),
         'post__not_in'        => $used_ids,
-        'meta_key'            => '_bb_views',
+        'meta_key'            => '_borobill_post_views',
         'orderby'             => 'meta_value_num',
         'order'               => 'DESC',
         'no_found_rows'       => true,

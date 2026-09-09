@@ -487,10 +487,10 @@ if ( $hero_needs_auto ) {
                             </div> //-->
 
                             <div class="post-view-mode" role="group" aria-label="게시글 보기 방식">
-                                <button type="button" class="post-view-mode__btn is-active" data-view-mode="list" aria-pressed="true" aria-label="목록형 보기">
-                                    <iconify-icon class="post-view-mode__icon post-view-mode__icon--flip-x" icon="fa:th-list" width="1em" height="1em" aria-hidden="true"></iconify-icon>
+                                 <button type="button" class="post-view-mode__btn<?php echo $is_root_page ? ' is-active' : ''; ?>" data-view-mode="list" aria-pressed="<?php echo $is_root_page ? 'true' : 'false'; ?>" aria-label="목록형 보기">
+                                      <iconify-icon class="post-view-mode__icon post-view-mode__icon--flip-x" icon="fa:th-list" width="1em" height="1em" aria-hidden="true"></iconify-icon>
                                 </button>
-                                <button type="button" class="post-view-mode__btn" data-view-mode="card" aria-pressed="false" aria-label="카드형 보기">
+                                 <button type="button" class="post-view-mode__btn<?php echo $is_root_page ? '' : ' is-active'; ?>" data-view-mode="card" aria-pressed="<?php echo $is_root_page ? 'false' : 'true'; ?>" aria-label="카드형 보기">
                                     <iconify-icon class="post-view-mode__icon" icon="ic:baseline-view-stream" width="1em" height="1em" aria-hidden="true"></iconify-icon>
                                 </button>
                             </div>

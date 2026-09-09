@@ -9,7 +9,6 @@ if ( ! function_exists( 'borobill_cat_url' ) ) {
         if ( $term && ! is_wp_error( $term ) ) {
             return esc_url( get_category_link( $term->term_id ) );
         }
-        // fallback: 홈에 rootcat 파라미터
         return esc_url( add_query_arg( 'rootcat', $slug, home_url( '/' ) ) );
     }
 }
@@ -25,60 +24,37 @@ if ( ! function_exists( 'borobill_cat_url' ) ) {
             </div>
 
             <nav class="footer-nav" aria-label="푸터 카테고리">
-
                 <div class="footer-nav-column">
-                    <h3 class="footer-nav-title"><a href="<?php echo borobill_cat_url( '초보사업자' ); ?>">초보사업자</a></h3>
+                    <h3 class="footer-nav-title"><a href="<?php echo borobill_cat_url( '세무-비즈니스' ); ?>">세무 비즈니스</a></h3>
                     <ul class="footer-nav-list">
-                        <li><a href="<?php echo borobill_cat_url( '사업자-등록' ); ?>">사업자 등록</a></li>
-                        <li><a href="<?php echo borobill_cat_url( '홈택스-시작' ); ?>">홈택스 시작</a></li>
-                        <li><a href="<?php echo borobill_cat_url( '첫-정산하기' ); ?>">첫 정산하기</a></li>
-                        <li><a href="<?php echo borobill_cat_url( '지원사업-정부정책' ); ?>">지원사업/정부정책</a></li>
-                        <li><a href="<?php echo borobill_cat_url( '세무일정-달력' ); ?>">세무일정 달력</a></li>
+                        <li><a href="<?php echo borobill_cat_url( '세무-가이드' ); ?>">세무 가이드</a></li>
+                        <li><a href="<?php echo borobill_cat_url( '세무-사전' ); ?>">세무 사전</a></li>
+                        <li><a href="<?php echo borobill_cat_url( '세무-일정' ); ?>">세무 일정</a></li>
+                        <li><a href="<?php echo borobill_cat_url( '세무-faq' ); ?>">세무 FAQ</a></li>
                     </ul>
                 </div>
-
-                <div class="footer-nav-column">
-                    <h3 class="footer-nav-title"><a href="<?php echo borobill_cat_url( '세무·비즈니스' ); ?>">세무·비즈니스</a></h3>
-                    <ul class="footer-nav-list">
-                        <li><a href="<?php echo borobill_cat_url( '세금·세무-가이드' ); ?>">세금·세무 가이드</a></li>
-                        <li><a href="<?php echo borobill_cat_url( '회계·재무-관리' ); ?>">회계·재무 관리</a></li>
-                        <li><a href="<?php echo borobill_cat_url( '기업운영·비즈니스' ); ?>">기업운영·비즈니스</a></li>
-                        <li><a href="<?php echo borobill_cat_url( '간편-세무계산기' ); ?>">간편 세무계산기</a></li>
-                        <li><a href="<?php echo borobill_cat_url( '세무사전-faq' ); ?>">세무사전 / FAQ</a></li>
-                    </ul>
-                </div>
-
-                <div class="footer-nav-column">
-                    <h3 class="footer-nav-title"><a href="<?php echo borobill_cat_url( '사업자-뉴스룸' ); ?>">사업자 뉴스룸</a></h3>
-                    <ul class="footer-nav-list">
-                        <li><a href="<?php echo borobill_cat_url( '세무·회계-뉴스' ); ?>">세무·회계 뉴스</a></li>
-                        <li><a href="<?php echo borobill_cat_url( '법령·정책-업데이트' ); ?>">법령·정책 업데이트</a></li>
-                        <li><a href="<?php echo borobill_cat_url( '시장·경영-트렌드' ); ?>">시장·경영 트렌드</a></li>
-                        <li><a href="<?php echo borobill_cat_url( '통계-리포트' ); ?>">통계 리포트</a></li>
-                    </ul>
-                </div>
-
                 <div class="footer-nav-column">
                     <h3 class="footer-nav-title"><a href="<?php echo borobill_cat_url( '바로빌-가이드' ); ?>">바로빌 가이드</a></h3>
                     <ul class="footer-nav-list">
-                        <li><a href="<?php echo borobill_cat_url( '문서-가이드' ); ?>">문서 가이드</a></li>
-                        <li><a href="<?php echo borobill_cat_url( '동영상-가이드' ); ?>">동영상 가이드</a></li>
-                        <li><a href="<?php echo borobill_cat_url( '첫-정산하기' ); ?>">첫 정산하기</a></li>
-                        <li><a href="<?php echo borobill_cat_url( '지원사업-정부정책' ); ?>">지원사업/정부정책</a></li>
+                        <li><a href="<?php echo borobill_cat_url( '세무-서비스' ); ?>">세무 서비스</a></li>
+                        <li><a href="<?php echo borobill_cat_url( '금융-서비스' ); ?>">금융 서비스</a></li>
+                        <li><a href="<?php echo borobill_cat_url( '메시징-서비스' ); ?>">메시징 서비스</a></li>
                     </ul>
                 </div>
-
                 <div class="footer-nav-column">
-                    <h3 class="footer-nav-title"><a href="<?php echo borobill_cat_url( '고객사례·인사이트' ); ?>">고객사례·인사이트</a></h3>
+                    <h3 class="footer-nav-title"><a href="<?php echo borobill_cat_url( '개발자-가이드' ); ?>">개발자 가이드</a></h3>
                     <ul class="footer-nav-list">
-                        <li><a href="<?php echo borobill_cat_url( '고객사례-인터뷰' ); ?>">고객사례 인터뷰</a></li>
-                        <li><a href="<?php echo borobill_cat_url( '활용-인사이트' ); ?>">활용 인사이트</a></li>
-                        <li><a href="<?php echo borobill_cat_url( '바로빌-소식' ); ?>">바로빌 소식</a></li>
-                        <li><a href="<?php echo borobill_cat_url( '지원사업-정부정책' ); ?>">지원사업/정부정책</a></li>
-                        <li><a href="<?php echo borobill_cat_url( '파트너·협력사-스토리' ); ?>">파트너·협력사 스토리</a></li>
+                        <li><a href="<?php echo borobill_cat_url( 'api-서비스' ); ?>">API 서비스</a></li>
+                        <li><a href="<?php echo borobill_cat_url( '개발-faq' ); ?>">개발 FAQ</a></li>
                     </ul>
                 </div>
-
+                <div class="footer-nav-column">
+                    <h3 class="footer-nav-title"><a href="<?php echo borobill_cat_url( '바로빌소식' ); ?>">바로빌 소식</a></h3>
+                    <ul class="footer-nav-list">
+                        <li><a href="<?php echo borobill_cat_url( '바로빌-이용후기' ); ?>">바로빌 이용후기</a></li>
+                        <li><a href="<?php echo borobill_cat_url( 'api-연동후기' ); ?>">API 연동후기</a></li>
+                    </ul>
+                </div>
             </nav>
 
             <div class="footer-social">
