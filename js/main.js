@@ -40,6 +40,31 @@
         const WP_API_URL = (window.borobillHeroSettings && borobillHeroSettings.restUrl)
             ? String(borobillHeroSettings.restUrl)
             : '/wp-json/wp/v2/';
+
+        // 기본 이미지 경로 (운영/로컬 경로 차이 대응)
+        const BOROBILL_DEFAULT_THUMB = (function () {
+            const el = document.querySelector('link[href*="/themes/borobill_theme/"], script[src*="/themes/borobill_theme/"]');
+            const src = el ? (el.href || el.src) : '';
+            const i = src.indexOf('/themes/borobill_theme/');
+            return i > -1
+                ? src.slice(0, i) + '/themes/borobill_theme/images/default.png'
+                : '/wp-content/themes/borobill_theme/images/default.png';
+        })();
+
+        // 대표 이미지: 원본(수 MB) 대신 축소본을 사용
+        function getThumbUrl(post) {
+            const media = post._embedded
+                && post._embedded['wp:featuredmedia']
+                && post._embedded['wp:featuredmedia'][0];
+            if (!media) return BOROBILL_DEFAULT_THUMB;
+            const sizes = media.media_details && media.media_details.sizes;
+            if (sizes) {
+                const pick = sizes.borobill_featured || sizes.medium_large || sizes.large || sizes.medium;
+                if (pick && pick.source_url) return pick.source_url;
+            }
+            return media.source_url || BOROBILL_DEFAULT_THUMB;
+        }
+
         // DOM elements
         const $featured = $('#featured-posts'); // 추천 게시물 영역
         const $filter = $('#category-filter');  // 카테고리 필터 버튼 영역
@@ -1385,7 +1410,7 @@
                 .slice(0, 3);
 
             for (let post of picked) {
-                let thumb = post._embedded && post._embedded['wp:featuredmedia'] ? post._embedded['wp:featuredmedia'][0].source_url : '/wordpress/wp-content/themes/borobill_theme/images/default.png';
+                let thumb = getThumbUrl(post);
                 let cat = escapeHtml(getDisplayCategoryLabelForPost(post));
                 const subPlain = getPostSubtitlePlain(post);
                 const subBlock = subPlain
@@ -1692,7 +1717,7 @@ ${subBlock}
 
             let listHTML = '';
             for (let post of sliced) {
-                let thumb = post._embedded && post._embedded['wp:featuredmedia'] ? post._embedded['wp:featuredmedia'][0].source_url : '/wordpress/wp-content/themes/borobill_theme/images/default.png';
+                let thumb = getThumbUrl(post);
                 const cat = escapeHtml(getDisplayCategoryLabelForPost(post));
                 const listSubPlain = getPostSubtitlePlain(post);
                 const plainTitle = post.title.rendered.replace(/<[^>]*>?/gm, '');
