@@ -47,7 +47,6 @@ if ( ! function_exists( 'borobill_cat_url' ) ) {
                         <li><a href="<?php echo borobill_cat_url( 'api-서비스' ); ?>">API 서비스</a></li>
                         <li><a href="<?php echo borobill_cat_url( 'erp-연동' ); ?>">ERP 연동</a></li>
                         <li><a href="<?php echo borobill_cat_url( '플랫폼-연동' ); ?>">플랫폼 연동</a></li>
-                        <li><a href="<?php echo borobill_cat_url( '그룹웨어-연동' ); ?>">그룹웨어 연동</a></li>
                     </ul>
                 </div>
                 <div class="footer-nav-column">
