@@ -1670,6 +1670,24 @@ function borobill_get_top_posts_by_period_views( $from, $to, $limit = 10, $offse
 
 	$table = borobill_get_post_daily_views_table_name();
 
+	// 세무 사전 용어는 글이 아니라 사전 항목이므로 조회수 순위에서 제외한다.
+	$exclude_sql = '';
+	if ( function_exists( 'borobill_get_glossary_term' ) ) {
+		$g_term = borobill_get_glossary_term();
+		if ( $g_term ) {
+			$exclude_sql = $wpdb->prepare(
+				"AND p.ID NOT IN (
+					SELECT tr.object_id
+					FROM {$wpdb->term_relationships} tr
+					INNER JOIN {$wpdb->term_taxonomy} tt
+						ON tt.term_taxonomy_id = tr.term_taxonomy_id
+					WHERE tt.taxonomy = 'category' AND tt.term_id = %d
+				)",
+				(int) $g_term->term_id
+			);
+		}
+	}
+
 	if ( $only_viewed ) {
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
@@ -1680,6 +1698,7 @@ function borobill_get_top_posts_by_period_views( $from, $to, $limit = 10, $offse
 					AND v.view_date <= %s
 					AND p.post_type = 'post'
 					AND p.post_status = 'publish'
+					{$exclude_sql}
 				GROUP BY v.post_id
 				ORDER BY period_views DESC, v.post_id DESC
 				LIMIT %d OFFSET %d",
@@ -1701,6 +1720,7 @@ function borobill_get_top_posts_by_period_views( $from, $to, $limit = 10, $offse
 					AND v.view_date <= %s
 				WHERE p.post_type = 'post'
 					AND p.post_status = 'publish'
+					{$exclude_sql}
 				GROUP BY p.ID
 				ORDER BY period_views DESC, p.ID DESC
 				LIMIT %d OFFSET %d",

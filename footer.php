@@ -30,7 +30,6 @@ if ( ! function_exists( 'borobill_cat_url' ) ) {
                         <li><a href="<?php echo borobill_cat_url( '세무-가이드' ); ?>">세무 가이드</a></li>
                         <li><a href="<?php echo borobill_cat_url( '세무-사전' ); ?>">세무 사전</a></li>
                         <li><a href="<?php echo borobill_cat_url( '세무-일정' ); ?>">세무 일정</a></li>
-                        <li><a href="<?php echo borobill_cat_url( '세무-faq' ); ?>">세무 FAQ</a></li>
                     </ul>
                 </div>
                 <div class="footer-nav-column">
@@ -39,13 +38,16 @@ if ( ! function_exists( 'borobill_cat_url' ) ) {
                         <li><a href="<?php echo borobill_cat_url( '세무-서비스' ); ?>">세무 서비스</a></li>
                         <li><a href="<?php echo borobill_cat_url( '금융-서비스' ); ?>">금융 서비스</a></li>
                         <li><a href="<?php echo borobill_cat_url( '메시징-서비스' ); ?>">메시징 서비스</a></li>
+                        <li><a href="<?php echo borobill_cat_url( '이용-안내' ); ?>">이용 안내</a></li>
                     </ul>
                 </div>
                 <div class="footer-nav-column">
                     <h3 class="footer-nav-title"><a href="<?php echo borobill_cat_url( '개발자-가이드' ); ?>">개발자 가이드</a></h3>
                     <ul class="footer-nav-list">
                         <li><a href="<?php echo borobill_cat_url( 'api-서비스' ); ?>">API 서비스</a></li>
-                        <li><a href="<?php echo borobill_cat_url( '개발-faq' ); ?>">개발 FAQ</a></li>
+                        <li><a href="<?php echo borobill_cat_url( 'erp-연동' ); ?>">ERP 연동</a></li>
+                        <li><a href="<?php echo borobill_cat_url( '플랫폼-연동' ); ?>">플랫폼 연동</a></li>
+                        <li><a href="<?php echo borobill_cat_url( '그룹웨어-연동' ); ?>">그룹웨어 연동</a></li>
                     </ul>
                 </div>
                 <div class="footer-nav-column">

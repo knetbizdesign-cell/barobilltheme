@@ -18,6 +18,33 @@
     const PER_PAGE = 10;
     const DEBOUNCE_MS = 300;
 
+    /* 검색어 기록 — 타이핑이 멈춘 뒤에만, 같은 말은 방문당 한 번만 보낸다 */
+    const LOG_BASE = API_BASE.replace(/wp\/v2\/?$/, 'borobill/v1/');
+    const LOG_DELAY_MS = 1500;
+    let logTimer = null;
+    const loggedThisVisit = Object.create(null);
+
+    function logSearch(query, count) {
+        const kw = String(query || '').trim().replace(/\s+/g, ' ');
+        if (kw.length < 2 || kw.length > 50) { return; }
+        if (loggedThisVisit[kw]) { return; }
+        loggedThisVisit[kw] = true;
+
+        try {
+            fetch(LOG_BASE + 'search-log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ keyword: kw, results: count | 0, source: 'modal' }),
+                keepalive: true
+            }).catch(function () {});
+        } catch (e) {}
+    }
+
+    function queueSearchLog(query, count) {
+        if (logTimer) { clearTimeout(logTimer); }
+        logTimer = setTimeout(function () { logSearch(query, count); }, LOG_DELAY_MS);
+    }
+
     /* ------------------------------------------------------------------ */
     /* DOM refs                                                            */
     /* ------------------------------------------------------------------ */
@@ -332,6 +359,9 @@
             matched.sort(function (a, b) {
                 return (b.__bbSortTs || 0) - (a.__bbSortTs || 0);
             });
+
+            // 직접 입력한 검색어만 기록한다 (태그 클릭은 제외)
+            if (query) { queueSearchLog(query, matched.length); }
 
             if (!matched.length) {
                 showState('no-results');

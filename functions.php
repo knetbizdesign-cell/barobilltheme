@@ -5055,3 +5055,1800 @@ function borobill_get_child_category_name_for_root( $post_id = null, $root_term 
     return $cats ? $cats[0]->name : '카테고리';
 }
 
+
+
+/*************************
+ * 카테고리별 레이아웃 분기
+ *************************/
+
+/**
+ * 카테고리에 적용할 레이아웃 키를 반환한다.
+ * 새 레이아웃을 추가할 때 이 배열에만 넣으면 된다.
+ */
+function borobill_get_category_layout( $term ) {
+    if ( ! $term instanceof WP_Term ) {
+        return 'default';
+    }
+
+    $map = array(
+        '세무 사전' => 'glossary',
+        '세무 일정' => 'calendar',
+    );
+
+    return isset( $map[ $term->name ] ) ? $map[ $term->name ] : 'default';
+}
+
+/**
+ * UTF-8 한 글자의 코드포인트
+ */
+function borobill_utf8_ord( $char ) {
+    $bin = mb_convert_encoding( $char, 'UTF-32BE', 'UTF-8' );
+    $arr = unpack( 'N', $bin );
+
+    return isset( $arr[1] ) ? (int) $arr[1] : 0;
+}
+
+/**
+ * 제목 첫 글자의 초성을 반환한다. 한글이 아니면 'A-Z' 또는 '#'.
+ */
+function borobill_hangul_initial( $text ) {
+    $text = trim( wp_strip_all_tags( (string) $text ) );
+    if ( '' === $text ) {
+        return '#';
+    }
+
+    $char = mb_substr( $text, 0, 1, 'UTF-8' );
+    $code = borobill_utf8_ord( $char );
+
+    if ( $code >= 0xAC00 && $code <= 0xD7A3 ) {
+        $list = array( 'ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ' );
+        $fold = array( 'ㄲ' => 'ㄱ', 'ㄸ' => 'ㄷ', 'ㅃ' => 'ㅂ', 'ㅆ' => 'ㅅ', 'ㅉ' => 'ㅈ' );
+        $ini  = $list[ (int) floor( ( $code - 0xAC00 ) / 588 ) ];
+
+        return isset( $fold[ $ini ] ) ? $fold[ $ini ] : $ini;
+    }
+
+    if ( preg_match( '/[A-Za-z0-9]/', $char ) ) {
+        return 'A-Z';
+    }
+
+    return '#';
+}
+
+/**
+ * 사전에서 쓰는 자음 탭 순서
+ */
+function borobill_glossary_jamo_order() {
+    return array( 'ㄱ','ㄴ','ㄷ','ㄹ','ㅁ','ㅂ','ㅅ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ','A-Z','#' );
+}
+
+/**
+ * 관련 업무 — 정식 명칭 → 짧은 이름 + 연결할 카테고리 ID
+ */
+function borobill_glossary_work_map() {
+    return array(
+        '전자세금계산서'        => array( '전자세금계산서',        40 ),
+        '현금영수증'            => array( '현금영수증',            40 ),
+        '전자문서'              => array( '전자문서',              40 ),
+        '홈택스 매입·매출 조회' => array( '홈택스 매입·매출 조회', 40 ),
+        '카드사용내역 조회'     => array( '카드사용내역 조회',     26 ),
+        '계좌거래내역 조회'     => array( '계좌거래내역 조회',     26 ),
+        '사업자상태조회'        => array( '사업자상태조회',        40 ),
+    );
+}
+
+/**
+ * 관련 서비스 줄(<p class="gl-work">)을 칩으로 바꾼다.
+ * 연결할 카테고리에 글이 있으면 링크, 없으면 그냥 칩.
+ * 목록과 개별 페이지가 같은 결과를 내도록 이 함수 하나만 쓴다.
+ */
+function borobill_glossary_chips( $html ) {
+    if ( false === strpos( $html, "gl-work" ) ) {
+        return $html;
+    }
+
+    $map = borobill_glossary_work_map();
+
+    return preg_replace_callback(
+        '#<p class="gl-work">(.*?)</p>#s',
+        function ( $m ) use ( $map ) {
+            $out = "";
+            // 서비스 사이 구분자는 앞뒤 공백이 있는 " · " 뿐이다.
+            // "매입·매출"처럼 공백 없는 가운뎃점은 이름의 일부라 자르지 않는다.
+            foreach ( preg_split( '/\s+·\s+/u', $m[1] ) as $raw ) {
+                $raw = trim( wp_strip_all_tags( $raw ) );
+                if ( "" === $raw ) {
+                    continue;
+                }
+                $label = isset( $map[ $raw ] ) ? $map[ $raw ][0] : $raw;
+                $term  = isset( $map[ $raw ] ) ? (int) $map[ $raw ][1] : 0;
+                $link  = "";
+
+                if ( $term ) {
+                    $t = get_term( $term, "category" );
+                    if ( $t && ! is_wp_error( $t ) && $t->count > 0 ) {
+                        $url = get_term_link( $t );
+                        if ( ! is_wp_error( $url ) ) {
+                            $link = $url;
+                        }
+                    }
+                }
+
+                $out .= $link
+                    ? '<a href="' . esc_url( $link ) . '">' . esc_html( $label ) . '</a>'
+                    : '<span>' . esc_html( $label ) . '</span>';
+            }
+
+            return '<p class="gl-work">' . $out . '</p>';
+        },
+        $html
+    );
+}
+
+/**
+ * 사전 목록에서 쓰는 본문 렌더링.
+ * 소제목은 라벨일 뿐이라 제목 태그 대신 <p class="gl-label">로 둔다.
+ */
+function borobill_glossary_render_body( $html ) {
+    $html = wpautop( $html );
+    $html = str_replace( array( "<h3>", "</h3>" ), array( '<p class="gl-label">', "</p>" ), $html );
+
+    return borobill_glossary_chips( $html );
+}
+
+/**
+ * 용어 개별 페이지에서도 같은 칩과 링크가 나오게 한다.
+ */
+function borobill_glossary_content_filter( $content ) {
+    if ( ! is_singular( "post" ) || ! in_the_loop() || ! is_main_query() ) {
+        return $content;
+    }
+    if ( ! has_category( 22, get_the_ID() ) ) {
+        return $content;
+    }
+
+    return borobill_glossary_chips( $content );
+}
+add_filter( "the_content", "borobill_glossary_content_filter", 20 );
+
+/**
+ * 세무 사전 구조화 데이터 (JSON-LD)
+ *  - 사전 목록 페이지 → DefinedTermSet + 용어 46개
+ *  - 용어 개별 페이지 → DefinedTerm
+ * Yoast가 넣는 Article/WebPage/BreadcrumbList와 별개로 추가된다.
+ */
+function borobill_glossary_schema() {
+    $cat_id = 22; // 세무 사전
+    $term   = get_term( $cat_id, 'category' );
+
+    if ( ! $term || is_wp_error( $term ) ) {
+        return;
+    }
+
+    $set_url = get_term_link( $term );
+    if ( is_wp_error( $set_url ) ) {
+        return;
+    }
+    $set_id = $set_url . '#definedtermset';
+
+    /* ── 용어 개별 페이지 ── */
+    if ( is_single() && in_category( $cat_id ) ) {
+        $post = get_post();
+        $desc = trim( $post->post_excerpt );
+        if ( '' === $desc ) {
+            $desc = wp_trim_words( wp_strip_all_tags( $post->post_content ), 40, '…' );
+        }
+
+        $data = array(
+            '@context'         => 'https://schema.org',
+            '@type'            => 'DefinedTerm',
+            '@id'              => get_permalink( $post ) . '#definedterm',
+            'name'             => get_the_title( $post ),
+            'description'      => $desc,
+            'url'              => get_permalink( $post ),
+            'inDefinedTermSet' => array(
+                '@type' => 'DefinedTermSet',
+                '@id'   => $set_id,
+                'name'  => '바로빌 세무 사전',
+                'url'   => $set_url,
+            ),
+        );
+
+        echo "\n" . '<script type="application/ld+json" class="borobill-glossary-schema">'
+            . wp_json_encode( $data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES )
+            . '</script>' . "\n";
+        return;
+    }
+
+    /* ── 사전 목록 페이지 ── */
+    if ( ! is_category( $cat_id ) ) {
+        return;
+    }
+
+    $posts = get_posts( array(
+        'post_type'        => 'post',
+        'post_status'      => 'publish',
+        'posts_per_page'   => -1,
+        'cat'              => $cat_id,
+        'orderby'          => 'title',
+        'order'            => 'ASC',
+        'suppress_filters' => false,
+    ) );
+
+    if ( empty( $posts ) ) {
+        return;
+    }
+
+    $terms = array();
+    foreach ( $posts as $p ) {
+        $desc = trim( $p->post_excerpt );
+        if ( '' === $desc ) {
+            $desc = wp_trim_words( wp_strip_all_tags( $p->post_content ), 40, '…' );
+        }
+
+        $terms[] = array(
+            '@type'       => 'DefinedTerm',
+            '@id'         => get_permalink( $p ) . '#definedterm',
+            'name'        => $p->post_title,
+            'description' => $desc,
+            'url'         => get_permalink( $p ),
+        );
+    }
+
+    $data = array(
+        '@context'       => 'https://schema.org',
+        '@type'          => 'DefinedTermSet',
+        '@id'            => $set_id,
+        'name'           => '바로빌 세무 사전',
+        'url'            => $set_url,
+        'inLanguage'     => 'ko-KR',
+        'hasDefinedTerm' => $terms,
+    );
+
+    echo "\n" . '<script type="application/ld+json" class="borobill-glossary-schema">'
+        . wp_json_encode( $data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES )
+        . '</script>' . "\n";
+}
+add_action( 'wp_head', 'borobill_glossary_schema', 20 );
+
+/**
+ * 최근 N개월 조회수 기준 상위 글 ID. 데이터가 모자라면 최신글로 채운다.
+ */
+function borobill_get_glossary_top_ids( $cat_id, $limit = 5, $months = 3 ) {
+    global $wpdb;
+
+    $cat_id = (int) $cat_id;
+    $limit  = max( 1, (int) $limit );
+    $ids    = array();
+
+    $post_ids = get_posts( array(
+        'post_type'   => 'post',
+        'post_status' => 'publish',
+        'numberposts' => -1,
+        'fields'      => 'ids',
+        'cat'         => $cat_id,
+    ) );
+
+    if ( ! empty( $post_ids ) && function_exists( 'borobill_get_post_daily_views_table_name' ) ) {
+        $table = borobill_get_post_daily_views_table_name();
+
+        if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table ) {
+            $in   = implode( ',', array_map( 'absint', $post_ids ) );
+            $rows = $wpdb->get_col(
+                $wpdb->prepare(
+                    "SELECT post_id FROM {$table}
+                      WHERE view_date >= DATE_SUB( CURDATE(), INTERVAL %d MONTH )
+                        AND post_id IN ({$in})
+                      GROUP BY post_id
+                     HAVING SUM(views) > 0
+                      ORDER BY SUM(views) DESC, post_id DESC
+                      LIMIT %d",
+                    (int) $months,
+                    $limit
+                )
+            );
+            $ids = array_map( 'absint', (array) $rows );
+        }
+    }
+
+    if ( count( $ids ) < $limit ) {
+        $fill = get_posts( array(
+            'post_type'    => 'post',
+            'post_status'  => 'publish',
+            'numberposts'  => $limit - count( $ids ),
+            'fields'       => 'ids',
+            'cat'          => $cat_id,
+            'post__not_in' => $ids,
+            'orderby'      => 'date',
+            'order'        => 'DESC',
+        ) );
+        $ids = array_merge( $ids, array_map( 'absint', $fill ) );
+    }
+
+    return array_slice( $ids, 0, $limit );
+}
+
+
+
+/*************************
+ * 관리자 메뉴: 세무 사전 전용
+ *************************/
+
+/**
+ * 세무 사전 카테고리 term 객체
+ */
+function borobill_get_glossary_term() {
+    $term = get_term_by( 'name', '세무 사전', 'category' );
+
+    return ( $term && ! is_wp_error( $term ) ) ? $term : null;
+}
+
+/**
+ * 지금 보고 있는 화면이 세무 사전 목록인지
+ */
+function borobill_is_glossary_admin_list() {
+    if ( ! is_admin() || ! isset( $_GET['cat'] ) ) {
+        return false;
+    }
+
+    $term = borobill_get_glossary_term();
+
+    return ( $term && (int) $_GET['cat'] === (int) $term->term_id );
+}
+
+/**
+ * 왼쪽 관리자 메뉴에 '세무 사전' 추가
+ */
+function borobill_register_glossary_admin_menu() {
+    $term = borobill_get_glossary_term();
+    if ( ! $term ) {
+        return;
+    }
+
+    $slug = 'edit.php?cat=' . (int) $term->term_id;
+
+    add_menu_page( '세무 사전', '세무 사전', 'edit_posts', $slug, '', 'dashicons-book-alt', 6 );
+    add_submenu_page( $slug, '용어 목록', '용어 목록', 'edit_posts', $slug );
+    add_submenu_page( $slug, '용어 추가', '용어 추가', 'edit_posts', 'post-new.php?borobill_glossary=1' );
+}
+add_action( 'admin_menu', 'borobill_register_glossary_admin_menu' );
+
+/**
+ * '용어 추가'로 들어오면 세무 사전 카테고리를 미리 체크
+ */
+function borobill_preselect_glossary_category( $post ) {
+    if ( 'post' !== $post->post_type || 'auto-draft' !== $post->post_status ) {
+        return;
+    }
+    if ( ! isset( $_GET['borobill_glossary'] ) ) {
+        return;
+    }
+
+    $term = borobill_get_glossary_term();
+    if ( $term ) {
+        wp_set_post_categories( $post->ID, array( (int) $term->term_id ) );
+    }
+}
+add_action( 'edit_form_after_title', 'borobill_preselect_glossary_category' );
+
+/**
+ * 목록 열: 용어와 뜻만 남긴다 (썸네일·태그·날짜·SEO 열 제거)
+ */
+function borobill_glossary_posts_columns( $columns ) {
+    if ( ! borobill_is_glossary_admin_list() ) {
+        return $columns;
+    }
+
+    $new = array();
+    if ( isset( $columns['cb'] ) ) {
+        $new['cb'] = $columns['cb'];
+    }
+    $new['title']                  = '용어';
+    $new['borobill_glossary_desc'] = '뜻';
+
+    return $new;
+}
+add_filter( 'manage_posts_columns', 'borobill_glossary_posts_columns', 100 );
+
+/**
+ * '뜻' 열 내용 — 발췌와 글자 수
+ */
+function borobill_glossary_posts_column_content( $column, $post_id ) {
+    if ( 'borobill_glossary_desc' !== $column ) {
+        return;
+    }
+
+    $desc = trim( (string) get_post_field( 'post_excerpt', $post_id ) );
+    if ( '' === $desc ) {
+        echo '<span style="color:#b32d2e">뜻이 비어 있습니다</span>';
+        return;
+    }
+
+    $len   = mb_strlen( $desc, 'UTF-8' );
+    $color = ( $len < 60 ) ? '#8a8f94' : ( ( $len > 90 ) ? '#a8511c' : '#2c6e49' );
+
+    echo '<div style="max-width:640px;line-height:1.6">' . esc_html( $desc ) . '</div>';
+    echo '<small style="color:' . esc_attr( $color ) . '">' . (int) $len . '자</small>';
+}
+add_action( 'manage_posts_custom_column', 'borobill_glossary_posts_column_content', 10, 2 );
+
+/**
+ * 세무 사전 목록은 가나다순으로 정렬
+ */
+function borobill_glossary_admin_order( $query ) {
+    if ( ! $query->is_main_query() || ! borobill_is_glossary_admin_list() ) {
+        return;
+    }
+    if ( ! isset( $_GET['orderby'] ) ) {
+        $query->set( 'orderby', 'title' );
+        $query->set( 'order', 'ASC' );
+    }
+}
+add_action( 'pre_get_posts', 'borobill_glossary_admin_order' );
+
+
+
+/**
+ * 세무 사전 화면인지 (목록 + 용어 추가)
+ */
+function borobill_is_glossary_admin_screen() {
+    if ( borobill_is_glossary_admin_list() ) {
+        return true;
+    }
+
+    global $pagenow;
+
+    return ( 'post-new.php' === $pagenow && isset( $_GET['borobill_glossary'] ) );
+}
+
+/**
+ * 왼쪽 메뉴에서 '세무 사전'이 활성화되도록 고정
+ */
+function borobill_glossary_menu_parent( $parent_file ) {
+    $term = borobill_get_glossary_term();
+    if ( $term && borobill_is_glossary_admin_screen() ) {
+        return 'edit.php?cat=' . (int) $term->term_id;
+    }
+
+    return $parent_file;
+}
+add_filter( 'parent_file', 'borobill_glossary_menu_parent' );
+
+function borobill_glossary_menu_submenu( $submenu_file ) {
+    $term = borobill_get_glossary_term();
+    if ( ! $term ) {
+        return $submenu_file;
+    }
+
+    global $pagenow;
+
+    if ( 'post-new.php' === $pagenow && isset( $_GET['borobill_glossary'] ) ) {
+        return 'post-new.php?borobill_glossary=1';
+    }
+
+    if ( borobill_is_glossary_admin_list() ) {
+        return 'edit.php?cat=' . (int) $term->term_id;
+    }
+
+    return $submenu_file;
+}
+add_filter( 'submenu_file', 'borobill_glossary_menu_submenu' );
+
+/**
+ * 목록 화면 제목을 '글' 대신 '세무 사전'으로
+ */
+function borobill_glossary_admin_heading() {
+    if ( ! borobill_is_glossary_admin_list() ) {
+        return;
+    }
+    ?>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var h1 = document.querySelector('.wrap h1.wp-heading-inline');
+        if (h1) { h1.textContent = '세무 사전'; }
+        var add = document.querySelector('.wrap a.page-title-action');
+        if (add) {
+            add.textContent = '용어 추가';
+            add.setAttribute('href', 'post-new.php?borobill_glossary=1');
+        }
+    });
+    </script>
+    <?php
+}
+add_action( 'admin_head-edit.php', 'borobill_glossary_admin_heading' );
+
+
+
+/**
+ * 특정 카테고리·상태의 글 개수
+ */
+function borobill_glossary_count( $term_id, $statuses ) {
+    $q = new WP_Query( array(
+        'post_type'           => 'post',
+        'post_status'         => $statuses,
+        'cat'                 => (int) $term_id,
+        'posts_per_page'      => 1,
+        'fields'              => 'ids',
+        'ignore_sticky_posts' => true,
+    ) );
+
+    return (int) $q->found_posts;
+}
+
+/**
+ * 목록 상단 카운트를 세무 사전 기준으로 교체
+ */
+function borobill_glossary_views( $views ) {
+    if ( ! borobill_is_glossary_admin_list() ) {
+        return $views;
+    }
+
+    $term = borobill_get_glossary_term();
+    if ( ! $term ) {
+        return $views;
+    }
+
+    $cat     = (int) $term->term_id;
+    $current = isset( $_GET['post_status'] ) ? sanitize_key( $_GET['post_status'] ) : 'all';
+    $base    = 'edit.php?cat=' . $cat;
+
+    $defs = array(
+        'all'     => array( '전체',   array( 'publish', 'future', 'draft', 'pending', 'private' ) ),
+        'publish' => array( '발행됨', array( 'publish' ) ),
+        'future'  => array( '예약됨', array( 'future' ) ),
+        'draft'   => array( '임시글', array( 'draft' ) ),
+        'trash'   => array( '휴지통', array( 'trash' ) ),
+    );
+
+    $out = array();
+    foreach ( $defs as $key => $def ) {
+        $n = borobill_glossary_count( $cat, $def[1] );
+
+        if ( 0 === $n && 'all' !== $key ) {
+            continue;
+        }
+
+        $url = ( 'all' === $key ) ? $base : $base . '&post_status=' . $key;
+        $cls = ( $current === $key ) ? ' class="current"' : '';
+
+        $out[ $key ] = sprintf(
+            '<a href="%s"%s>%s <span class="count">(%d)</span></a>',
+            esc_url( admin_url( $url ) ),
+            $cls,
+            esc_html( $def[0] ),
+            $n
+        );
+    }
+
+    return $out;
+}
+add_filter( 'views_edit-post', 'borobill_glossary_views' );
+
+
+
+/*************************
+ * 세무 사전 용어를 일반 글 목록에서 분리
+ *************************/
+
+/**
+ * 관리자 '모든 글' 목록에서 사전 용어 제외
+ */
+function borobill_exclude_glossary_from_admin_list( $query ) {
+    global $pagenow;
+
+    if ( ! is_admin() || 'edit.php' !== $pagenow || ! $query->is_main_query() ) {
+        return;
+    }
+
+    // 세무 사전 전용 화면에서는 그대로 둔다
+    if ( borobill_is_glossary_admin_list() ) {
+        return;
+    }
+
+    $term = borobill_get_glossary_term();
+    if ( ! $term ) {
+        return;
+    }
+
+    $not   = (array) $query->get( 'category__not_in' );
+    $not[] = (int) $term->term_id;
+    $query->set( 'category__not_in', array_unique( $not ) );
+}
+add_action( 'pre_get_posts', 'borobill_exclude_glossary_from_admin_list' );
+
+/**
+ * 프론트 화면의 각종 목록(추천 아티클 등)에서 사전 용어 제외
+ */
+function borobill_exclude_glossary_from_front_queries( $query ) {
+    if ( is_admin() ) {
+        return;
+    }
+
+    $term = borobill_get_glossary_term();
+    if ( ! $term ) {
+        return;
+    }
+
+    $tid = (int) $term->term_id;
+
+    // 사전을 콕 집어 조회하는 경우는 그대로 둔다
+    if ( (int) $query->get( 'cat' ) === $tid ) {
+        return;
+    }
+
+    $in = (array) $query->get( 'category__in' );
+    if ( 1 === count( $in ) && (int) reset( $in ) === $tid ) {
+        return;
+    }
+
+    // 메인 쿼리는 건드리지 않는다 (아카이브 판정에 영향)
+    if ( $query->is_main_query() ) {
+        return;
+    }
+
+    $not   = (array) $query->get( 'category__not_in' );
+    $not[] = $tid;
+    $query->set( 'category__not_in', array_unique( $not ) );
+}
+add_action( 'pre_get_posts', 'borobill_exclude_glossary_from_front_queries' );
+
+/**
+ * REST API 글 목록에서 사전 용어 제외
+ * (카테고리 페이지·메인의 카드 목록이 전부 이걸로 그려진다)
+ */
+function borobill_exclude_glossary_from_rest( $args, $request ) {
+    $term = borobill_get_glossary_term();
+    if ( ! $term ) {
+        return $args;
+    }
+
+    $tid  = (int) $term->term_id;
+    $cats = $request->get_param( 'categories' );
+
+    if ( ! empty( $cats ) ) {
+        $cats = is_array( $cats )
+            ? array_map( 'absint', $cats )
+            : array_map( 'absint', explode( ',', (string) $cats ) );
+
+        // 사전을 명시적으로 요청했으면 그대로 둔다
+        if ( in_array( $tid, $cats, true ) ) {
+            return $args;
+        }
+    }
+
+    $not   = isset( $args['category__not_in'] ) ? (array) $args['category__not_in'] : array();
+    $not[] = $tid;
+    $args['category__not_in'] = array_unique( $not );
+
+    return $args;
+}
+add_filter( 'rest_post_query', 'borobill_exclude_glossary_from_rest', 10, 2 );
+
+
+
+/**
+ * 특정 카테고리를 뺀 글 개수
+ */
+function borobill_count_posts_excluding_cat( $statuses, $exclude_cat ) {
+    $q = new WP_Query( array(
+        'post_type'           => 'post',
+        'post_status'         => $statuses,
+        'category__not_in'    => array( (int) $exclude_cat ),
+        'posts_per_page'      => 1,
+        'fields'              => 'ids',
+        'ignore_sticky_posts' => true,
+    ) );
+
+    return (int) $q->found_posts;
+}
+
+/**
+ * 관리자 '모든 글' 상단 카운트에서 사전 용어를 뺀다
+ */
+function borobill_exclude_glossary_from_post_views( $views ) {
+    if ( borobill_is_glossary_admin_list() ) {
+        return $views;
+    }
+
+    $term = borobill_get_glossary_term();
+    if ( ! $term ) {
+        return $views;
+    }
+
+    $tid  = (int) $term->term_id;
+    $defs = array(
+        'all'     => array( 'publish', 'future', 'draft', 'pending', 'private' ),
+        'publish' => array( 'publish' ),
+        'future'  => array( 'future' ),
+        'draft'   => array( 'draft' ),
+        'pending' => array( 'pending' ),
+        'private' => array( 'private' ),
+        'trash'   => array( 'trash' ),
+    );
+
+    foreach ( $views as $key => $html ) {
+        if ( ! isset( $defs[ $key ] ) ) {
+            continue;
+        }
+
+        $n = borobill_count_posts_excluding_cat( $defs[ $key ], $tid );
+
+        if ( 0 === $n && 'all' !== $key ) {
+            unset( $views[ $key ] );
+            continue;
+        }
+
+        $views[ $key ] = preg_replace( '/\([\d,]+\)/u', '(' . number_format_i18n( $n ) . ')', $html, 1 );
+    }
+
+    return $views;
+}
+add_filter( 'views_edit-post', 'borobill_exclude_glossary_from_post_views', 20 );
+
+
+
+/**
+ * 세무 사전 사이드바용 — 사전을 뺀 전체 글 목록 (제목·설명·링크·썸네일·조회수)
+ */
+function borobill_get_guide_posts_for_glossary( $limit = 300 ) {
+    $args = array(
+        'post_type'   => 'post',
+        'post_status' => 'publish',
+        'numberposts' => (int) $limit,
+        'orderby'     => 'date',
+        'order'       => 'DESC',
+    );
+
+    // 사전 용어는 제외
+    $glossary = get_term_by( 'name', '세무 사전', 'category' );
+    if ( $glossary && ! is_wp_error( $glossary ) ) {
+        $args['category__not_in'] = array( (int) $glossary->term_id );
+    }
+
+    $posts    = get_posts( $args );
+    $fallback = get_template_directory_uri() . '/images/default.png';
+    $out      = array();
+
+    foreach ( $posts as $p ) {
+        $desc = trim( $p->post_excerpt );
+        if ( '' === $desc ) {
+            $desc = wp_trim_words( wp_strip_all_tags( $p->post_content ), 30, '…' );
+        }
+
+        $thumb = get_the_post_thumbnail_url( $p, 'borobill_featured' );
+        if ( ! $thumb ) {
+            $thumb = get_the_post_thumbnail_url( $p, 'medium' );
+        }
+
+        $out[] = array(
+            't' => $p->post_title,
+            'd' => $desc,
+            'u' => get_permalink( $p ),
+            'i' => $thumb ? $thumb : $fallback,
+            'v' => (int) get_post_meta( $p->ID, '_borobill_post_views', true ),
+        );
+    }
+
+    return $out;
+}
+
+
+
+/**
+ * 세무 사전 주제 순서 (이 순서대로 칩이 나열된다)
+ */
+function borobill_glossary_topic_order() {
+    return array( '부가세', '세금계산서', '신고·가산세', '증빙', '소득·법인세', '사업자' );
+}
+
+/**
+ * 사전 용어들이 실제로 쓰고 있는 주제만 반환
+ */
+function borobill_get_glossary_topics( $term_id ) {
+    $ids = get_posts( array(
+        'post_type'   => 'post',
+        'post_status' => 'publish',
+        'numberposts' => -1,
+        'fields'      => 'ids',
+        'cat'         => (int) $term_id,
+    ) );
+
+    if ( empty( $ids ) ) {
+        return array();
+    }
+
+    $tags = wp_get_object_terms( $ids, 'post_tag', array( 'fields' => 'names' ) );
+    if ( is_wp_error( $tags ) ) {
+        return array();
+    }
+
+    $used = array();
+    foreach ( borobill_glossary_topic_order() as $t ) {
+        if ( in_array( $t, $tags, true ) ) {
+            $used[] = $t;
+        }
+    }
+
+    return $used;
+}
+
+
+/* ============================================================
+ * [세무 일정] 캘린더형 — 데이터 + 관리자 화면
+ * 저장 방식: 연·월·일이 확정된 날짜 목록 (반복·휴일 순연 없음)
+ * ========================================================== */
+
+/**
+ * 일정 항목 정의
+ */
+function borobill_calendar_kinds() {
+    return array(
+        'bill' => '세금계산서',
+        'vat'  => '부가세',
+        'wht'  => '원천세',
+        'corp' => '법인세',
+        'inc'  => '소득세',
+    );
+}
+
+function borobill_calendar_option_key() {
+    return 'borobill_tax_calendar_dates';
+}
+
+/**
+ * 예전 '반복 규칙' 저장값 (마이그레이션 용도로만 사용)
+ */
+function borobill_calendar_legacy_rules() {
+    $saved = get_option( 'borobill_tax_calendar_items', false );
+    if ( is_array( $saved ) && $saved ) {
+        return $saved;
+    }
+
+    // r: 'M' 매월 · 'Y' 매년 / d: 1~31 (0 이면 말일)
+    return array(
+        array( 'k' => 'wht',  'r' => 'M', 'm' => 0,  'd' => 10, 't' => '원천세 신고·납부',              'w' => '전월분 원천징수이행상황신고서 제출 및 납부' ),
+        array( 'k' => 'ins',  'r' => 'M', 'm' => 0,  'd' => 10, 't' => '4대보험료 납부',                'w' => '건강·연금·고용·산재보험료' ),
+        array( 'k' => 'wht',  'r' => 'M', 'm' => 0,  'd' => 0,  't' => '일용근로소득 지급명세서 제출',    'w' => '전월 지급분 · 말일까지' ),
+
+        array( 'k' => 'wht',  'r' => 'Y', 'm' => 1,  'd' => 10, 't' => '반기별 원천세 납부',            'w' => '전년 7~12월 지급분' ),
+        array( 'k' => 'vat',  'r' => 'Y', 'm' => 1,  'd' => 25, 't' => '부가가치세 제2기 확정신고·납부',  'w' => '법인·개인 일반과세자' ),
+        array( 'k' => 'vat',  'r' => 'Y', 'm' => 1,  'd' => 25, 't' => '간이과세자 부가가치세 신고·납부', 'w' => '직전 연도 공급대가 기준' ),
+        array( 'k' => 'inc',  'r' => 'Y', 'm' => 2,  'd' => 10, 't' => '면세사업자 사업장현황 신고',      'w' => '병·의원, 학원 등 면세사업자' ),
+        array( 'k' => 'inc',  'r' => 'Y', 'm' => 3,  'd' => 10, 't' => '근로·퇴직소득 지급명세서 제출',    'w' => '연말정산 결과 제출' ),
+        array( 'k' => 'corp', 'r' => 'Y', 'm' => 3,  'd' => 31, 't' => '법인세 신고·납부',              'w' => '12월 결산법인' ),
+        array( 'k' => 'vat',  'r' => 'Y', 'm' => 4,  'd' => 25, 't' => '부가가치세 제1기 예정신고·납부',  'w' => '법인 / 개인은 예정고지 납부' ),
+        array( 'k' => 'inc',  'r' => 'Y', 'm' => 5,  'd' => 31, 't' => '종합소득세 확정신고·납부',        'w' => '전년도 귀속 소득' ),
+        array( 'k' => 'inc',  'r' => 'Y', 'm' => 6,  'd' => 30, 't' => '성실신고확인대상자 종합소득세 신고', 'w' => '성실신고확인서 첨부' ),
+        array( 'k' => 'wht',  'r' => 'Y', 'm' => 7,  'd' => 10, 't' => '반기별 원천세 납부',            'w' => '1~6월 지급분' ),
+        array( 'k' => 'vat',  'r' => 'Y', 'm' => 7,  'd' => 25, 't' => '부가가치세 제1기 확정신고·납부',  'w' => '법인·개인 일반과세자' ),
+        array( 'k' => 'corp', 'r' => 'Y', 'm' => 8,  'd' => 31, 't' => '법인세 중간예납 신고·납부',       'w' => '12월 결산법인' ),
+        array( 'k' => 'ins',  'r' => 'Y', 'm' => 9,  'd' => 30, 't' => '4대보험 보수총액 정산분 납부',    'w' => '분할납부 신청 사업장은 2회차 납부일' ),
+        array( 'k' => 'corp', 'r' => 'Y', 'm' => 9,  'd' => 30, 't' => '법인세 신고·납부',              'w' => '6월 결산법인' ),
+        array( 'k' => 'vat',  'r' => 'Y', 'm' => 10, 'd' => 25, 't' => '부가가치세 제2기 예정신고·납부',  'w' => '법인 / 개인은 예정고지 납부' ),
+        array( 'k' => 'inc',  'r' => 'Y', 'm' => 11, 'd' => 30, 't' => '종합소득세 중간예납 납부',        'w' => '고지서 기준 납부' ),
+        array( 'k' => 'corp', 'r' => 'Y', 'm' => 12, 'd' => 31, 't' => '법인세 중간예납 신고·납부',       'w' => '6월 결산법인' ),
+    );
+}
+
+/**
+ * 예전 규칙을 올해·내년 날짜로 풀어서 옮긴다 (최초 1회)
+ */
+function borobill_calendar_seed_rows() {
+    $rules = borobill_calendar_legacy_rules();
+    $kinds = borobill_calendar_kinds();
+
+    // 예전에 입력해 둔 공휴일이 있으면 순연에 반영
+    $holidays = array();
+    $raw      = (string) get_option( 'borobill_tax_calendar_holidays', '' );
+    if ( '' !== trim( $raw ) ) {
+        foreach ( preg_split( '/[\s,]+/', $raw ) as $line ) {
+            $line = trim( $line );
+            if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $line ) ) {
+                $holidays[] = $line;
+            }
+        }
+    }
+
+    $out = array();
+    $y0  = (int) current_time( 'Y' );
+
+    for ( $y = $y0; $y <= $y0 + 1; $y++ ) {
+        for ( $m = 1; $m <= 12; $m++ ) {
+            $last = (int) gmdate( 't', gmmktime( 0, 0, 0, $m, 1, $y ) );
+
+            foreach ( $rules as $it ) {
+                $repeat = ( isset( $it['r'] ) && 'M' === $it['r'] ) ? 'M' : 'Y';
+                if ( 'Y' === $repeat && (int) $it['m'] !== $m ) {
+                    continue;
+                }
+
+                $day = isset( $it['d'] ) ? (int) $it['d'] : 1;
+                $day = ( 0 === $day ) ? $last : min( $day, $last );
+                $ts  = gmmktime( 0, 0, 0, $m, $day, $y );
+
+                // 토·일·공휴일이면 다음 영업일로
+                $guard = 0;
+                while ( $guard < 20 ) {
+                    $dow = (int) gmdate( 'N', $ts );
+                    $ymd = gmdate( 'Y-m-d', $ts );
+                    if ( $dow < 6 && ! in_array( $ymd, $holidays, true ) ) {
+                        break;
+                    }
+                    $ts += DAY_IN_SECONDS;
+                    $guard++;
+                }
+
+                $k = isset( $it['k'] ) ? (string) $it['k'] : 'wht';
+                if ( ! isset( $kinds[ $k ] ) ) {
+                    $k = 'wht';
+                }
+
+                $out[] = array(
+                    'd' => gmdate( 'Y-m-d', $ts ),
+                    'k' => $k,
+                    't' => isset( $it['t'] ) ? (string) $it['t'] : '',
+                    'w' => isset( $it['w'] ) ? (string) $it['w'] : '',
+                );
+            }
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * 저장된 일정 목록 (날짜 오름차순)
+ */
+function borobill_calendar_get_items() {
+    $rows = get_option( borobill_calendar_option_key(), false );
+
+    if ( false === $rows ) {
+        $rows = borobill_calendar_seed_rows();
+        add_option( borobill_calendar_option_key(), $rows, '', 'no' );
+    }
+
+    if ( ! is_array( $rows ) ) {
+        return array();
+    }
+
+    $kinds = borobill_calendar_kinds();
+    $out   = array();
+
+    foreach ( $rows as $r ) {
+        if ( ! is_array( $r ) || empty( $r['d'] ) ) {
+            continue;
+        }
+        if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $r['d'] ) ) {
+            continue;
+        }
+
+        $k = isset( $r['k'] ) ? (string) $r['k'] : 'wht';
+
+        $out[] = array(
+            'd' => $r['d'],
+            'k' => isset( $kinds[ $k ] ) ? $k : 'wht',
+            't' => isset( $r['t'] ) ? (string) $r['t'] : '',
+            'w' => isset( $r['w'] ) ? (string) $r['w'] : '',
+        );
+    }
+
+    usort( $out, function ( $a, $b ) {
+        return strcmp( $a['d'], $b['d'] );
+    } );
+
+    return $out;
+}
+
+/**
+ * 해당 연·월의 일정 목록
+ */
+function borobill_calendar_events( $year, $month ) {
+    $prefix = sprintf( '%04d-%02d-', (int) $year, (int) $month );
+    $out    = array();
+
+    foreach ( borobill_calendar_get_items() as $r ) {
+        if ( 0 !== strpos( $r['d'], $prefix ) ) {
+            continue;
+        }
+
+        $out[] = array(
+            'k'    => $r['k'],
+            't'    => $r['t'],
+            'w'    => $r['w'],
+            'day'  => (int) substr( $r['d'], 8, 2 ),
+            'date' => $r['d'],
+        );
+    }
+
+    return $out;
+}
+
+/**
+ * 저장된 일정이 있는 연도 목록
+ */
+function borobill_calendar_years() {
+    $years = array();
+
+    foreach ( borobill_calendar_get_items() as $r ) {
+        $y = (int) substr( $r['d'], 0, 4 );
+        if ( ! in_array( $y, $years, true ) ) {
+            $years[] = $y;
+        }
+    }
+
+    $now = (int) current_time( 'Y' );
+    if ( ! in_array( $now, $years, true ) ) {
+        $years[] = $now;
+    }
+
+    sort( $years );
+
+    return $years;
+}
+
+/**
+ * 항목별 검색 키워드
+ */
+function borobill_calendar_kind_keywords() {
+    return array(
+        'bill' => array( '세금계산서', '전자세금계산서', '역발행', '가산세', '발급' ),
+        'vat'  => array( '부가세', '부가가치세', '간이과세자' ),
+        'wht'  => array( '원천세', '원천징수', '지급명세서', '연말정산' ),
+        'corp' => array( '법인세' ),
+        'inc'  => array( '소득세', '종합소득세' ),
+    );
+}
+
+/**
+ * 관련 글 후보 묶음 — 세무 비즈니스 > 세무 가이드 글만
+ */
+function borobill_calendar_guide_pool( $limit = 200 ) {
+    $limit = (int) $limit;
+
+    $guide = get_term_by( 'name', '세무 가이드', 'category' );
+    if ( ! $guide || is_wp_error( $guide ) ) {
+        return array();
+    }
+
+    $posts = get_posts( array(
+        'post_type'        => 'post',
+        'post_status'      => 'publish',
+        'numberposts'      => $limit,
+        'cat'              => (int) $guide->term_id,
+        'orderby'          => 'date',
+        'order'            => 'DESC',
+        'suppress_filters' => false,
+    ) );
+
+    $fallback = get_template_directory_uri() . '/images/default.png';
+    $out      = array();
+
+    foreach ( $posts as $p ) {
+        $thumb = get_the_post_thumbnail_url( $p, 'borobill_featured' );
+        if ( ! $thumb ) {
+            $thumb = get_the_post_thumbnail_url( $p, 'medium' );
+        }
+
+        $sub = function_exists( 'borobill_get_post_subtitle' ) ? borobill_get_post_subtitle( $p->ID ) : '';
+        if ( '' === $sub ) {
+            $sub = trim( $p->post_excerpt );
+        }
+        if ( '' === $sub ) {
+            $sub = wp_trim_words( wp_strip_all_tags( $p->post_content ), 20, '…' );
+        }
+
+        $out[] = array(
+            't'   => get_the_title( $p ),
+            'u'   => get_permalink( $p ),
+            'i'   => $thumb ? $thumb : $fallback,
+            'cat' => $guide->name,
+            'dt'  => function_exists( 'borobill_post_date' ) ? borobill_post_date( $p->ID ) : get_the_date( 'Y.m.d', $p ),
+            'sub' => $sub,
+            'v'   => (int) get_post_meta( $p->ID, '_borobill_post_views', true ),
+            'tax' => 1,
+            'txt' => $p->post_title . ' ' . $sub . ' ' . wp_strip_all_tags( $p->post_content ),
+        );
+    }
+
+    return $out;
+}
+
+/**
+ * 항목에 맞는 글 3개 (PHP 초기 렌더용)
+ */
+function borobill_calendar_pick_guides( $pool, $kind = '', $limit = 3 ) {
+    $limit = (int) $limit;
+    $words = borobill_calendar_kind_keywords();
+    $hit   = array();
+
+    if ( $kind && isset( $words[ $kind ] ) ) {
+        foreach ( $pool as $g ) {
+            foreach ( $words[ $kind ] as $w ) {
+                if ( false !== mb_strpos( $g['txt'], $w ) ) {
+                    $hit[] = $g;
+                    break;
+                }
+            }
+        }
+    }
+
+    if ( count( $hit ) < $limit ) {
+        foreach ( $pool as $g ) {
+            if ( $g['tax'] && ! in_array( $g, $hit, true ) ) {
+                $hit[] = $g;
+            }
+        }
+    }
+
+    if ( count( $hit ) < $limit ) {
+        foreach ( $pool as $g ) {
+            if ( ! in_array( $g, $hit, true ) ) {
+                $hit[] = $g;
+            }
+        }
+    }
+
+    usort( $hit, function ( $a, $b ) {
+        return $b['v'] - $a['v'];
+    } );
+
+    return array_slice( $hit, 0, $limit );
+}
+
+/* ------------------------------------------------------------
+ * 관리자 화면
+ * ---------------------------------------------------------- */
+
+function borobill_calendar_admin_slug() {
+    return 'borobill-tax-calendar';
+}
+
+function borobill_register_calendar_admin_menu() {
+    add_menu_page(
+        '세무 일정',
+        '세무 일정',
+        'edit_posts',
+        borobill_calendar_admin_slug(),
+        'borobill_render_calendar_admin_page',
+        'dashicons-calendar-alt',
+        7
+    );
+}
+add_action( 'admin_menu', 'borobill_register_calendar_admin_menu' );
+
+/* ─────────────────────────────────────────────
+   [세무 일정] 공휴일
+   ───────────────────────────────────────────── */
+
+function borobill_calendar_holiday_key() {
+    return 'borobill_calendar_holiday_map';
+}
+
+function borobill_calendar_holidays() {
+    $raw = (string) get_option( borobill_calendar_holiday_key(), '' );
+    $out = array();
+
+    foreach ( preg_split( '/\r\n|\r|\n/', $raw ) as $line ) {
+        $line = trim( $line );
+        if ( '' === $line ) {
+            continue;
+        }
+
+        $cols = array_map( 'trim', explode( '|', $line ) );
+        if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $cols[0] ) ) {
+            continue;
+        }
+
+        $name = ( isset( $cols[1] ) && '' !== $cols[1] ) ? $cols[1] : '공휴일';
+        $out[ $cols[0] ] = sanitize_text_field( $name );
+    }
+
+    ksort( $out );
+    return $out;
+}
+
+function borobill_calendar_handle_holidays() {
+    if ( ! isset( $_POST['borobill_calendar_hol_nonce'] ) ) {
+        return;
+    }
+    if ( ! wp_verify_nonce( sanitize_key( $_POST['borobill_calendar_hol_nonce'] ), 'borobill_calendar_hol' ) ) {
+        return;
+    }
+    if ( ! current_user_can( 'edit_posts' ) ) {
+        return;
+    }
+
+    $raw = isset( $_POST['bc_hol'] ) ? (string) wp_unslash( $_POST['bc_hol'] ) : '';
+    update_option( borobill_calendar_holiday_key(), sanitize_textarea_field( $raw ), 'no' );
+
+    add_settings_error(
+        'borobill_calendar',
+        'hol_done',
+        sprintf( '공휴일 %d일을 저장했습니다.', count( borobill_calendar_holidays() ) ),
+        'updated'
+    );
+}
+
+
+/**
+ * 표에서 저장 — 보고 있는 연도의 일정만 교체한다
+ */
+function borobill_calendar_handle_save( $year ) {
+    if ( ! isset( $_POST['borobill_calendar_nonce'] ) ) {
+        return;
+    }
+    if ( ! wp_verify_nonce( sanitize_key( $_POST['borobill_calendar_nonce'] ), 'borobill_calendar_save' ) ) {
+        return;
+    }
+    if ( ! current_user_can( 'edit_posts' ) ) {
+        return;
+    }
+
+    $kinds  = borobill_calendar_kinds();
+    $prefix = sprintf( '%04d-', (int) $year );
+
+    // 다른 연도는 그대로 둔다
+    $keep = array();
+    foreach ( borobill_calendar_get_items() as $r ) {
+        if ( 0 !== strpos( $r['d'], $prefix ) ) {
+            $keep[] = $r;
+        }
+    }
+
+    $ds = isset( $_POST['bc_d'] ) ? (array) $_POST['bc_d'] : array();
+    $ks = isset( $_POST['bc_k'] ) ? (array) $_POST['bc_k'] : array();
+    $ts = isset( $_POST['bc_t'] ) ? (array) $_POST['bc_t'] : array();
+    $ws = isset( $_POST['bc_w'] ) ? (array) $_POST['bc_w'] : array();
+
+    $added = 0;
+    foreach ( $ds as $i => $date ) {
+        $date  = sanitize_text_field( wp_unslash( $date ) );
+        $title = isset( $ts[ $i ] ) ? sanitize_text_field( wp_unslash( $ts[ $i ] ) ) : '';
+
+        if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) || '' === trim( $title ) ) {
+            continue;
+        }
+
+        $k = isset( $ks[ $i ] ) ? sanitize_key( $ks[ $i ] ) : 'wht';
+
+        $keep[] = array(
+            'd' => $date,
+            'k' => isset( $kinds[ $k ] ) ? $k : 'wht',
+            't' => $title,
+            'w' => isset( $ws[ $i ] ) ? sanitize_text_field( wp_unslash( $ws[ $i ] ) ) : '',
+        );
+        $added++;
+    }
+
+    usort( $keep, function ( $a, $b ) {
+        return strcmp( $a['d'], $b['d'] );
+    } );
+
+    update_option( borobill_calendar_option_key(), $keep, 'no' );
+
+    add_settings_error( 'borobill_calendar', 'saved', sprintf( '%d년 일정 %d건을 저장했습니다.', (int) $year, $added ), 'updated' );
+}
+
+/**
+ * 일괄 입력 — 한 줄에 하나씩 "날짜 | 항목 | 일정명 | 설명"
+ */
+function borobill_calendar_handle_bulk() {
+    if ( ! isset( $_POST['borobill_calendar_bulk_nonce'] ) ) {
+        return;
+    }
+    if ( ! wp_verify_nonce( sanitize_key( $_POST['borobill_calendar_bulk_nonce'] ), 'borobill_calendar_bulk' ) ) {
+        return;
+    }
+    if ( ! current_user_can( 'edit_posts' ) ) {
+        return;
+    }
+
+    $raw = isset( $_POST['bc_bulk'] ) ? (string) wp_unslash( $_POST['bc_bulk'] ) : '';
+    if ( '' === trim( $raw ) ) {
+        add_settings_error( 'borobill_calendar', 'bulk_empty', '붙여넣은 내용이 없습니다.', 'error' );
+        return;
+    }
+
+    $kinds   = borobill_calendar_kinds();
+    $by_name = array_flip( $kinds );   // '부가세' => 'vat'
+
+    $rows  = array();
+    $years = array();
+    $bad   = 0;
+
+    foreach ( preg_split( '/\r\n|\r|\n/', $raw ) as $line ) {
+        $line = trim( $line );
+        if ( '' === $line ) {
+            continue;
+        }
+
+        $cols = array_map( 'trim', explode( '|', $line ) );
+        if ( count( $cols ) < 3 || ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $cols[0] ) ) {
+            $bad++;
+            continue;
+        }
+
+        $k = isset( $by_name[ $cols[1] ] ) ? $by_name[ $cols[1] ] : sanitize_key( $cols[1] );
+        if ( ! isset( $kinds[ $k ] ) ) {
+            $k = 'wht';
+        }
+
+        $rows[]  = array(
+            'd' => $cols[0],
+            'k' => $k,
+            't' => sanitize_text_field( $cols[2] ),
+            'w' => isset( $cols[3] ) ? sanitize_text_field( $cols[3] ) : '',
+        );
+        $years[] = substr( $cols[0], 0, 4 );
+    }
+
+    if ( ! $rows ) {
+        add_settings_error( 'borobill_calendar', 'bulk_none', '읽을 수 있는 줄이 없습니다. 형식을 확인해 주세요.', 'error' );
+        return;
+    }
+
+    $years   = array_unique( $years );
+    $replace = ( isset( $_POST['bc_bulk_mode'] ) && 'replace' === $_POST['bc_bulk_mode'] );
+    $keep    = array();
+
+    foreach ( borobill_calendar_get_items() as $r ) {
+        if ( $replace && in_array( substr( $r['d'], 0, 4 ), $years, true ) ) {
+            continue;
+        }
+        $keep[] = $r;
+    }
+
+    $keep = array_merge( $keep, $rows );
+
+    usort( $keep, function ( $a, $b ) {
+        return strcmp( $a['d'], $b['d'] );
+    } );
+
+    update_option( borobill_calendar_option_key(), $keep, 'no' );
+
+    $msg = sprintf( '%d건을 불러왔습니다. (%s년)', count( $rows ), implode( ', ', $years ) );
+    if ( $bad ) {
+        $msg .= sprintf( ' 형식이 맞지 않아 건너뛴 줄 %d개.', $bad );
+    }
+
+    add_settings_error( 'borobill_calendar', 'bulk_done', $msg, 'updated' );
+}
+
+/**
+ * 관리 화면
+ */
+function borobill_render_calendar_admin_page() {
+    if ( ! current_user_can( 'edit_posts' ) ) {
+        return;
+    }
+
+    $this_year = (int) current_time( 'Y' );
+    $view_year = isset( $_GET['cy'] ) ? (int) $_GET['cy'] : $this_year;
+    if ( $view_year < 2000 || $view_year > 2100 ) {
+        $view_year = $this_year;
+    }
+
+    borobill_calendar_handle_bulk();
+    borobill_calendar_handle_holidays();
+    borobill_calendar_handle_save( $view_year );
+
+    $kinds = borobill_calendar_kinds();
+    $years = borobill_calendar_years();
+    $slug  = borobill_calendar_admin_slug();
+
+    $rows   = array();
+    $counts = array();
+    foreach ( borobill_calendar_get_items() as $r ) {
+        $y            = (int) substr( $r['d'], 0, 4 );
+        $counts[ $y ] = isset( $counts[ $y ] ) ? $counts[ $y ] + 1 : 1;
+        if ( $y === $view_year ) {
+            $rows[] = $r;
+        }
+    }
+
+    $next_year  = $this_year + 1;
+    $need_next  = empty( $counts[ $next_year ] );
+    $show_alert = ( $need_next && (int) current_time( 'n' ) >= 11 );
+    ?>
+    <div class="wrap">
+        <h1>세무 일정</h1>
+        <?php settings_errors( 'borobill_calendar' ); ?>
+
+        <?php if ( $show_alert ) : ?>
+            <div class="notice notice-warning">
+                <p><b><?php echo (int) $next_year; ?>년 일정이 아직 없습니다.</b> 연말이 되기 전에 아래 '일괄 입력'으로 채워주세요.</p>
+            </div>
+        <?php endif; ?>
+
+        <h2 class="nav-tab-wrapper" style="margin-bottom:16px">
+            <?php foreach ( $years as $y ) : ?>
+                <a class="nav-tab<?php echo ( $y === $view_year ) ? ' nav-tab-active' : ''; ?>"
+                   href="<?php echo esc_url( admin_url( 'admin.php?page=' . $slug . '&cy=' . $y ) ); ?>">
+                    <?php echo (int) $y; ?>년
+                    <span style="color:#888">(<?php echo isset( $counts[ $y ] ) ? (int) $counts[ $y ] : 0; ?>)</span>
+                </a>
+            <?php endforeach; ?>
+            <a class="nav-tab" href="<?php echo esc_url( admin_url( 'admin.php?page=' . $slug . '&cy=' . ( max( $years ) + 1 ) ) ); ?>">
+                ＋ <?php echo (int) ( max( $years ) + 1 ); ?>년
+            </a>
+        </h2>
+
+        <form method="post">
+            <?php wp_nonce_field( 'borobill_calendar_save', 'borobill_calendar_nonce' ); ?>
+
+            <p class="description" style="margin:0 0 12px">
+                날짜를 그대로 적습니다. 공휴일에 걸려 기한이 밀린 경우, <b>이미 밀린 날짜</b>를 넣어주세요.
+                저장하면 <b><?php echo (int) $view_year; ?>년</b> 일정만 이 표의 내용으로 바뀌고 다른 해는 그대로 유지됩니다.
+            </p>
+
+            <table class="widefat striped" id="bc-table">
+                <thead>
+                    <tr>
+                        <th style="width:150px">날짜</th>
+                        <th style="width:110px">항목</th>
+                        <th style="width:34%">일정명</th>
+                        <th>설명</th>
+                        <th style="width:50px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php if ( empty( $rows ) ) : ?>
+                    <tr>
+                        <td><input type="date" name="bc_d[]" value="<?php echo esc_attr( $view_year . '-01-01' ); ?>"></td>
+                        <td>
+                            <select name="bc_k[]">
+                                <?php foreach ( $kinds as $key => $label ) : ?>
+                                    <option value="<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </td>
+                        <td><input type="text" name="bc_t[]" value="" class="large-text"></td>
+                        <td><input type="text" name="bc_w[]" value="" class="large-text"></td>
+                        <td><button type="button" class="button-link bc-del" aria-label="삭제">✕</button></td>
+                    </tr>
+                <?php else : ?>
+                    <?php foreach ( $rows as $r ) : ?>
+                        <tr>
+                            <td><input type="date" name="bc_d[]" value="<?php echo esc_attr( $r['d'] ); ?>"></td>
+                            <td>
+                                <select name="bc_k[]">
+                                    <?php foreach ( $kinds as $key => $label ) : ?>
+                                        <option value="<?php echo esc_attr( $key ); ?>" <?php selected( $r['k'], $key ); ?>><?php echo esc_html( $label ); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </td>
+                            <td><input type="text" name="bc_t[]" value="<?php echo esc_attr( $r['t'] ); ?>" class="large-text"></td>
+                            <td><input type="text" name="bc_w[]" value="<?php echo esc_attr( $r['w'] ); ?>" class="large-text"></td>
+                            <td><button type="button" class="button-link bc-del" aria-label="삭제">✕</button></td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+                </tbody>
+            </table>
+
+            <p><button type="button" class="button" id="bc-add">＋ 일정 추가</button></p>
+
+            <?php submit_button( $view_year . '년 일정 저장' ); ?>
+        </form>
+
+        <hr style="margin:34px 0">
+
+        <h2>일괄 입력</h2>
+        <p class="description">
+            한 줄에 하나씩 <code>날짜 | 항목 | 일정명 | 설명</code> 형식으로 붙여넣으세요.
+            항목은 <?php echo esc_html( implode( ' / ', $kinds ) ); ?> 중 하나입니다. 설명은 생략할 수 있습니다.
+        </p>
+
+        <form method="post">
+            <?php wp_nonce_field( 'borobill_calendar_bulk', 'borobill_calendar_bulk_nonce' ); ?>
+            <textarea name="bc_bulk" rows="10" class="large-text code" placeholder="2027-01-11 | 원천세 | 원천세 신고·납부 | 전월분 원천징수이행상황신고서 제출 및 납부&#10;2027-01-25 | 부가세 | 부가가치세 제2기 확정신고·납부 | 법인·개인 일반과세자"></textarea>
+
+            <p>
+                <label><input type="radio" name="bc_bulk_mode" value="append" checked> 기존 일정에 <b>추가</b></label>
+                &nbsp;&nbsp;
+                <label><input type="radio" name="bc_bulk_mode" value="replace"> 붙여넣은 연도의 일정을 <b>모두 교체</b></label>
+            </p>
+
+            <?php submit_button( '불러오기', 'secondary' ); ?>
+        </form>
+        <hr style="margin:34px 0">
+
+        <h2>공휴일</h2>
+        <p class="description">
+            한 줄에 하나씩 <code>날짜 | 공휴일 이름</code> 형식입니다. 달력에서 <b>빨간 날짜</b>로 표시됩니다.
+            대체공휴일도 각각 한 줄로 넣어주세요.
+        </p>
+
+        <form method="post">
+            <?php wp_nonce_field( 'borobill_calendar_hol', 'borobill_calendar_hol_nonce' ); ?>
+            <textarea name="bc_hol" rows="12" class="large-text code" placeholder="2026-01-01 | 신정&#10;2026-03-01 | 삼일절&#10;2026-03-02 | 대체공휴일"><?php
+                echo esc_textarea( (string) get_option( borobill_calendar_holiday_key(), '' ) );
+            ?></textarea>
+            <?php submit_button( '공휴일 저장', 'secondary' ); ?>
+        </form>
+    </div>
+
+    <script>
+    (function () {
+        var table = document.getElementById('bc-table');
+        if (!table) { return; }
+
+        var body = table.querySelector('tbody');
+
+        document.getElementById('bc-add').addEventListener('click', function () {
+            var row = body.rows[0];
+            if (!row) { return; }
+
+            var clone = row.cloneNode(true);
+            clone.querySelectorAll('input').forEach(function (el) {
+                if (el.type !== 'date') { el.value = ''; }
+            });
+            clone.querySelectorAll('select').forEach(function (el) { el.selectedIndex = 0; });
+            body.appendChild(clone);
+            clone.querySelector('input[name="bc_t[]"]').focus();
+        });
+
+        body.addEventListener('click', function (e) {
+            var del = e.target.closest('.bc-del');
+            if (!del) { return; }
+            if (body.rows.length <= 1) { return; }
+            del.closest('tr').remove();
+        });
+    })();
+    </script>
+    <?php
+}
+
+
+
+/*************************
+ * 검색어 기록
+ *  - 검색 모달에서 실제로 입력된 말을 날짜별로 모은다
+ *  - 「자주 찾는 검색어」를 이 데이터로 채운다
+ *  - 결과가 0건인 검색어는 다음에 쓸 글 주제가 된다
+ *************************/
+
+function borobill_search_log_table_name() {
+    global $wpdb;
+    return $wpdb->prefix . 'borobill_search_log';
+}
+
+function borobill_create_search_log_table() {
+    global $wpdb;
+    $table   = borobill_search_log_table_name();
+    $charset = $wpdb->get_charset_collate();
+
+    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+    dbDelta( "CREATE TABLE {$table} (
+        id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+        keyword varchar(100) NOT NULL,
+        search_date date NOT NULL,
+        source varchar(20) NOT NULL DEFAULT 'modal',
+        hits int unsigned NOT NULL DEFAULT 0,
+        results int unsigned NOT NULL DEFAULT 0,
+        PRIMARY KEY  (id),
+        UNIQUE KEY kw_date_src (keyword, search_date, source),
+        KEY search_date (search_date)
+    ) {$charset};" );
+
+    // dbDelta 는 옛 인덱스를 지우지 않는다.
+    // (keyword, search_date) 유니크가 남아 있으면 유입 위치별로 나뉘지 않는다.
+    $has_old = $wpdb->get_var( "SHOW INDEX FROM {$table} WHERE Key_name = 'kw_date'" );
+    if ( $has_old ) {
+        $wpdb->query( "ALTER TABLE {$table} DROP INDEX kw_date" );
+    }
+}
+
+function borobill_maybe_create_search_log_table() {
+    if ( '2' === get_option( 'borobill_search_log_ready' ) ) {
+        return;
+    }
+    borobill_create_search_log_table();
+    update_option( 'borobill_search_log_ready', '2', false );
+}
+add_action( 'init', 'borobill_maybe_create_search_log_table' );
+
+/** 검색어 1건 기록 (같은 날 같은 말이면 횟수만 올린다) */
+function borobill_search_log_record( WP_REST_Request $req ) {
+    global $wpdb;
+
+    $kw = sanitize_text_field( (string) $req->get_param( 'keyword' ) );
+    $kw = trim( preg_replace( '/\s+/u', ' ', $kw ) );
+    $kw = mb_substr( $kw, 0, 50, 'UTF-8' );
+
+    if ( mb_strlen( $kw, 'UTF-8' ) < 2 ) {
+        return new WP_REST_Response( array( 'ok' => false, 'reason' => 'too_short' ), 200 );
+    }
+
+    $results = max( 0, (int) $req->get_param( 'results' ) );
+    $table   = borobill_search_log_table_name();
+
+    // modal = 상단 「검색하기」, glossary = 세무 사전 안 검색창
+    $source = (string) $req->get_param( 'source' );
+    if ( ! in_array( $source, array( 'modal', 'glossary' ), true ) ) {
+        $source = 'modal';
+    }
+
+    $wpdb->query( $wpdb->prepare(
+        "INSERT INTO {$table} (keyword, search_date, source, hits, results)
+         VALUES (%s, %s, %s, 1, %d)
+         ON DUPLICATE KEY UPDATE hits = hits + 1, results = %d",
+        $kw, current_time( 'Y-m-d' ), $source, $results, $results
+    ) );
+
+    return new WP_REST_Response( array( 'ok' => true ), 200 );
+}
+
+add_action( 'rest_api_init', function () {
+    register_rest_route( 'borobill/v1', '/search-log', array(
+        'methods'             => 'POST',
+        'permission_callback' => '__return_true',
+        'callback'            => 'borobill_search_log_record',
+        'args'                => array(
+            'keyword' => array( 'required' => true, 'type' => 'string' ),
+            'results' => array( 'required' => false, 'type' => 'integer' ),
+            'source'  => array( 'required' => false, 'type' => 'string' ),
+        ),
+    ) );
+} );
+
+/**
+ * 최근 N일 상위 검색어.
+ * $with_results 가 true면 결과가 있었던 검색어만 (자주 찾는 검색어용),
+ * false면 결과가 0건이었던 검색어만 (글 주제 발굴용).
+ */
+function borobill_get_top_search_keywords( $limit = 12, $days = 30, $with_results = true, $source = 'modal' ) {
+    global $wpdb;
+    $table = borobill_search_log_table_name();
+
+    if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+        return array();
+    }
+
+    $cond = $with_results ? 'MAX(results) > 0' : 'MAX(results) = 0';
+
+    // 'all' 이면 두 경로를 합쳐서 본다.
+    if ( in_array( $source, array( 'modal', 'glossary' ), true ) ) {
+        $where = $wpdb->prepare( 'AND source = %s', $source );
+    } else {
+        $where = '';
+    }
+
+    return (array) $wpdb->get_col( $wpdb->prepare(
+        "SELECT keyword FROM {$table}
+          WHERE search_date >= DATE_SUB( CURDATE(), INTERVAL %d DAY ) {$where}
+          GROUP BY keyword
+         HAVING {$cond}
+          ORDER BY SUM(hits) DESC, MAX(search_date) DESC
+          LIMIT %d",
+        (int) $days, (int) $limit
+    ) );
+}
+
+/**
+ * 관리자 → 통계 → 검색어
+ * 「세무 사전」 메뉴는 슬러그가 edit.php?cat=… 형태라 하위 페이지를 달면
+ * 권한 검사에서 걸린다. 슬러그가 깔끔한 「통계」 아래에 둔다.
+ */
+function borobill_register_search_log_page() {
+    add_submenu_page(
+        'borobill-stats',
+        '검색어', '검색어', 'edit_posts',
+        'borobill-search-log', 'borobill_render_search_log_page'
+    );
+}
+add_action( 'admin_menu', 'borobill_register_search_log_page', 20 );
+
+function borobill_render_search_log_page() {
+    global $wpdb;
+
+    $table = borobill_search_log_table_name();
+    $days  = isset( $_GET['days'] ) ? max( 1, (int) $_GET['days'] ) : 30;
+    $src   = isset( $_GET['src'] ) ? sanitize_key( $_GET['src'] ) : 'modal';
+    if ( ! in_array( $src, array( 'modal', 'glossary' ), true ) ) {
+        $src = 'modal';
+    }
+
+    $tabs = array(
+        'modal'    => array(
+            'label' => '통합 검색',
+            'desc'  => '상단 「검색하기」에서 글을 찾은 검색입니다. 결과가 없던 말은 <strong>다음에 써야 할 글 주제</strong>입니다.',
+            'zero'  => '이 주제로 쓴 글이 없습니다',
+        ),
+        'glossary' => array(
+            'label' => '세무 사전',
+            'desc'  => '세무 사전 안 검색창에서 용어를 찾은 검색입니다. 결과가 없던 말은 <strong>사전에 넣어야 할 용어</strong>입니다.',
+            'zero'  => '사전에 없는 용어입니다',
+        ),
+    );
+
+    echo '<div class="wrap"><h1>검색어</h1>';
+
+    if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+        echo '<p>아직 기록 테이블이 없습니다. 사이트를 한 번 열면 만들어집니다.</p></div>';
+        return;
+    }
+
+    // 탭 (각 탭에 최근 $days일 검색 횟수를 같이 보여준다)
+    $counts = array();
+    foreach ( array_keys( $tabs ) as $key ) {
+        $counts[ $key ] = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT SUM(hits) FROM {$table}
+              WHERE search_date >= DATE_SUB( CURDATE(), INTERVAL %d DAY ) AND source = %s",
+            $days, $key
+        ) );
+    }
+
+    echo '<h2 class="nav-tab-wrapper" style="margin-bottom:16px">';
+    foreach ( $tabs as $key => $tab ) {
+        printf(
+            '<a href="%s" class="nav-tab%s">%s <span style="opacity:.6">%s</span></a>',
+            esc_url( admin_url( 'admin.php?page=borobill-search-log&src=' . $key . '&days=' . $days ) ),
+            $key === $src ? ' nav-tab-active' : '',
+            esc_html( $tab['label'] ),
+            number_format( $counts[ $key ] )
+        );
+    }
+    echo '</h2>';
+
+    // 기간
+    echo '<p style="margin:0 0 10px">기간 &nbsp;';
+    foreach ( array( 7, 30, 90 ) as $d ) {
+        printf(
+            '<a href="%s" style="margin-right:8px;%s">%d일</a>',
+            esc_url( admin_url( 'admin.php?page=borobill-search-log&src=' . $src . '&days=' . $d ) ),
+            $d === $days ? 'font-weight:700;text-decoration:none' : '',
+            $d
+        );
+    }
+    echo '</p>';
+
+    echo '<p style="margin:0 0 14px;color:#50575e">' . wp_kses_post( $tabs[ $src ]['desc'] ) . '</p>';
+
+    $rows = $wpdb->get_results( $wpdb->prepare(
+        "SELECT keyword, SUM(hits) h, MAX(results) r, MAX(search_date) d
+           FROM {$table}
+          WHERE search_date >= DATE_SUB( CURDATE(), INTERVAL %d DAY ) AND source = %s
+          GROUP BY keyword
+          ORDER BY h DESC, d DESC
+          LIMIT 200",
+        $days, $src
+    ) );
+
+    if ( ! $rows ) {
+        echo '<div class="notice notice-info inline" style="margin:0"><p>최근 ' . (int) $days . '일 동안 기록된 검색어가 없습니다.</p></div></div>';
+        return;
+    }
+
+    $zero_rows = array_filter( $rows, function ( $r ) { return 0 === (int) $r->r; } );
+
+    if ( $zero_rows ) {
+        echo '<div class="notice notice-warning inline" style="margin:0 0 14px"><p><strong>결과가 없던 검색어 '
+           . count( $zero_rows ) . '개</strong> &mdash; 아래 붉은 줄입니다.</p></div>';
+    }
+
+    echo '<table class="widefat striped"><thead><tr>'
+       . '<th style="width:60px">순위</th><th>검색어</th>'
+       . '<th style="width:110px">검색 횟수</th>'
+       . '<th style="width:110px">결과</th>'
+       . '<th style="width:130px">마지막 검색</th></tr></thead><tbody>';
+
+    $i = 0;
+    foreach ( $rows as $r ) {
+        $zero = ( 0 === (int) $r->r );
+        printf(
+            '<tr%s><td>%d</td><td><strong>%s</strong>%s</td><td>%s회</td><td>%s</td><td>%s</td></tr>',
+            $zero ? ' style="background:#fcf0f1"' : '',
+            ++$i,
+            esc_html( $r->keyword ),
+            $zero ? ' <span style="color:#b32d2e;font-size:11px;margin-left:6px">' . esc_html( $tabs[ $src ]['zero'] ) . '</span>' : '',
+            number_format( (int) $r->h ),
+            $zero ? '<span style="color:#b32d2e">0건</span>' : number_format( (int) $r->r ) . '건',
+            esc_html( $r->d )
+        );
+    }
+    echo '</tbody></table>';
+
+    echo '<p style="margin-top:14px;color:#646970">검색어·날짜·횟수만 저장합니다. 방문자 정보는 남기지 않습니다.</p>';
+    echo '</div>';
+}

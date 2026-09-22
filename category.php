@@ -33,6 +33,12 @@ $root_slug = $root_term instanceof WP_Term ? $root_term->slug : '';
 // 현재 페이지가 루트 허브 페이지인지 여부
 $is_root_page = ( $term instanceof WP_Term && $root_term instanceof WP_Term && (int) $term->term_id === (int) $root_term->term_id );
 
+// 카테고리별 특수 레이아웃 (세무 사전 · 세무 일정 등)
+$category_layout = borobill_get_category_layout( $term );
+$is_glossary     = ( 'glossary' === $category_layout );
+$is_calendar     = ( 'calendar' === $category_layout );
+$hide_toolbar    = ( $is_glossary || $is_calendar );
+
 // LNB — header-menu(GNB)와 동일 구조
 $lnb_groups = borobill_get_header_gnb_lnb_groups();
 
@@ -259,7 +265,8 @@ if ( $hero_needs_auto ) {
         <main class="category-main<?php echo ! $is_root_page ? ' category-main--child' : ''; ?>">
             <?php if ( $is_root_page ) : ?>
             <header class="category-main-header">
-                <h1 class="category-main-title"><?php echo esc_html( '추천 아티클' ); ?></h1>
+                <h1 class="screen-reader-text"><?php echo esc_html( $root_name ); ?></h1>
+                <h2 class="category-main-title"><?php echo esc_html( '추천 아티클' ); ?></h2>
             </header>
             <?php endif; ?>
 
@@ -457,7 +464,13 @@ if ( $hero_needs_auto ) {
             <section class="section section-all-posts-header<?php echo $is_child_page ? ' all-posts-header--child' : ''; ?>" aria-labelledby="all-posts-title">
                 <div class="section-inner">
                     <div class="all-posts-toolbar">
-                        <h2 id="all-posts-title" class="all-posts-title"><?php echo $is_root_page ? esc_html( '전체게시글' ) : esc_html( $child_page_title ?: '전체게시글' ); ?></h2>
+                        <?php if ( $is_root_page ) : ?>
+                            <h2 id="all-posts-title" class="all-posts-title">전체게시글</h2>
+                        <?php else : ?>
+                            <h1 id="all-posts-title" class="all-posts-title"><?php echo esc_html( $child_page_title ?: '전체게시글' ); ?></h1>
+                        <?php endif; ?>
+
+                        <?php if ( ! $hide_toolbar ) : ?>
                         <div class="section-search section-search--modal all-posts-search">
                             <label class="screen-reader-text" for="all-posts-search-input">검색어</label>
                             <input type="search"
@@ -495,6 +508,7 @@ if ( $hero_needs_auto ) {
                                 </button>
                             </div>
                         </div>
+			<?php endif; ?>
                     </div>
                 </div>
             </section>
@@ -529,9 +543,15 @@ if ( $hero_needs_auto ) {
             if ( ! $is_root_page && $term instanceof WP_Term ) {
                 $filter_args['initial_group'] = $term->slug;
             }
-            get_template_part( 'template-parts/category-filter', null, $filter_args );
+            if ( $is_glossary ) {
+                get_template_part( 'template-parts/glossary-index' );
+            } elseif ( $is_calendar ) {
+                get_template_part( 'template-parts/calendar-index' );
+            } else {
+                get_template_part( 'template-parts/category-filter', null, $filter_args );
+                get_template_part( 'template-parts/main-list' );
+            }
             ?>
-            <?php get_template_part( 'template-parts/main-list' ); ?>
 
         </main>
     </div>
@@ -540,4 +560,3 @@ if ( $hero_needs_auto ) {
 </div>
 
 <?php get_footer(); ?>
-

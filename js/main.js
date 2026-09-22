@@ -939,11 +939,32 @@
         // content 제외 + embed 최소화로 운영 전송량/TTFB 감소
         const POST_LIST_FIELDS = 'id,date,link,status,title,excerpt,categories,borobill_subtitle,borobill_views,_links';
 
+        // 주소의 ?tag= 값을 태그 ID로 바꿔 둔다 (한 번만 조회)
+        let activeTagId = null;
+
+        async function resolveActiveTag() {
+            const name = new URLSearchParams(location.search).get('tag');
+            if (!name) { return null; }
+
+            try {
+                const res = await fetch(`${WP_API_URL}tags?per_page=100&_fields=id,name`);
+                if (!res.ok) { return null; }
+                const list = await res.json();
+                const hit = Array.isArray(list)
+                    ? list.find((t) => t.name === name)
+                    : null;
+                return hit ? hit.id : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
         function buildPostsUrl(page, perPage, categoryIds) {
             const catParam = (Array.isArray(categoryIds) && categoryIds.length)
                 ? `&categories=${categoryIds.join(',')}`
                 : '';
-            return `${WP_API_URL}posts?per_page=${perPage}&page=${page}&_embed=wp:featuredmedia,wp:term&_fields=${POST_LIST_FIELDS}${catParam}`;
+            const tagParam = activeTagId ? `&tags=${activeTagId}` : '';
+            return `${WP_API_URL}posts?per_page=${perPage}&page=${page}&_embed=wp:featuredmedia,wp:term&_fields=${POST_LIST_FIELDS}${catParam}${tagParam}`;
         }
 
         async function fetchPostsPage(page, perPage, categoryIds) {
@@ -1058,6 +1079,7 @@
                 : [];
 
             // 1) 첫 화면(6개)만 먼저 받아 스켈레톤 즉시 제거
+            activeTagId = await resolveActiveTag();
             const firstPage = await fetchPostsPage(1, DEFAULT_LIST_PER_PAGE, fetchCatIds);
             allPosts = applyAllowedCategoryFilter(firstPage.data);
             finishListBootstrap();
@@ -1418,7 +1440,7 @@
                     : '';
                 recHTML += `<article class="featured-card featured-card--feed">
 <a href="${post.link}" class="featured-thumb-wrap">
-    <img src="${thumb}" class="featured-thumb" alt="${post.title.rendered.replace(/<[^>]*>?/gm, '')}" />
+    <img src="${thumb}" class="featured-thumb" alt="${post.title.rendered.replace(/<[^>]*>?/gm, '')}" loading="lazy" decoding="async" />
 </a>
 <div class="featured-meta article-meta">
     <span class="badge badge-small">${cat}</span>
@@ -1737,7 +1759,7 @@ ${subBlock}
     ${listTagsBlock}
 </div>
 <div class="article-thumb-wrap">
-    <img src="${thumb}" class="article-thumb" alt="${escapeAttr(plainTitle)}" />
+    <img src="${thumb}" class="article-thumb" alt="${escapeAttr(plainTitle)}" loading="lazy" decoding="async" />
 </div>
 </article>
 </a>`;

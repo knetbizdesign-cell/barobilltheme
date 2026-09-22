@@ -1922,15 +1922,38 @@ body.mobile-nav-open {
     }
 }
 
-/* PC: 추천 게시물 태그 말줄임 없이 보일 수 있는 만큼 전체 노출 */
+/* PC: 달력과 사이드바를 같은 행에 놓아 위·아래 선을 자동으로 맞춘다 */
 @media (min-width: 1024px) {
-    .section-featured .featured-tag {
-        max-width: none;
+    .taxcal-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 160px;
+        grid-template-rows: auto auto;
+        column-gap: 28px;
+        row-gap: 14px;
+        align-items: stretch;
     }
-    .section-featured .featured-tag__text {
-        overflow: visible;
-        text-overflow: unset;
+    .taxcal-ym {
+        grid-column: 1;
+        grid-row: 1;
+        margin-bottom: 0;
+        align-self: start;
     }
+    .taxcal-grid {
+   	 border: 1px solid var(--glossary-line);
+  	  border-radius: 12px;
+   	 overflow: hidden;
+    }
+    .taxcal-aside {
+        grid-column: 2;
+        grid-row: 2;
+        margin-top: 0;
+        align-self: start;
+    }
+
+    /* 남는 높이를 달력 각 줄에 똑같이 나눠 준다 */
+    .taxcal-grid table { height: 100%; }
+    .taxcal-grid td    { height: auto; }
+    .taxcal-day        { height: 100%; min-height: 66px; }
 }
 
 /* 타이틀 폰트 통일: 추천게시물 타이틀 = 카테고리 아래 리스트 타이틀 */
@@ -7714,8 +7737,8 @@ html.search-modal-open {
 }
 /* PC: 6열 · 모바일은 아래 @640px에서 3열 + 3줄 노출 */
 .search-modal__popular-tags {
-    display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     margin-bottom: 14px;
 }
@@ -7726,6 +7749,8 @@ html.search-modal-open {
     justify-content: center;
     height: 34px;
     min-width: 0;
+    flex-shrink: 0;
+    white-space: nowrap;
     padding: 0 8px;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
@@ -8090,10 +8115,9 @@ html[data-theme="dark"] .search-modal__mark {
     }
 
     .search-modal__popular-tags {
-        /* 3열: 6열 대비 칩이 넓어져 한 줄 라벨 유지 */
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        /* 부모가 flex-wrap 이라 칩이 글자 길이에 맞게 늘어난다 */
         gap: 8px 6px;
-        /* 약 3줄만 보이고 나머지는 세로 스크롤 (18개 태그) */
+        /* 약 3줄만 보이고 나머지는 세로 스크롤 */
         max-height: calc(3 * 36px + 2 * 8px);
         overflow-y: auto;
         overscroll-behavior: contain;
@@ -8882,3 +8906,1325 @@ html[data-theme="dark"] .entry-content :where(tr:first-child > td) {
     }
 }
 
+
+/*************************
+	[GLOSSARY] 세무 사전 — 인덱스형
+	사용: template-parts/glossary-index.php
+	최종 정리: 2026-09-11
+*************************/
+
+:root {
+    --glossary-line:      #b4c0d0;
+    --glossary-accent:    #4661f0;
+    --glossary-head-h:    52px;
+    --glossary-term-size: clamp(16px, 0.4vw + 15px, 19px);
+    --glossary-side-size: 16px;
+}
+html[data-theme="dark"] {
+    --glossary-line: #46525f;
+}
+
+/* sticky 사이드바가 동작하도록 스크롤 가둠 해제 */
+.layout--category:has(.section-glossary),
+.section-glossary .section-inner {
+    overflow-x: clip;
+}
+
+.glossary {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.glossary-body { margin-top: 30px; }
+
+/* ── 검색창 ───────────────────────────── */
+.glossary-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.glossary-search__icon {
+    position: absolute;
+    left: 18px;
+    color: var(--color-text-muted);
+    pointer-events: none;
+}
+.glossary-search__input {
+    width: 100%;
+    padding: 17px 18px 17px 48px;
+    font-size: var(--fs-body);
+    line-height: 1.4;
+    color: var(--color-page-text);
+    background: var(--color-surface-muted);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    box-sizing: border-box;
+}
+.glossary-search__input::placeholder { color: var(--color-text-muted); }
+
+/* 포커스 테두리는 안쪽에 그린다 (바깥은 잘림) */
+.glossary-search__input:focus,
+.glossary-search__input:focus-visible {
+    outline: none;
+    border-color: var(--glossary-accent);
+    box-shadow: inset 0 0 0 1px var(--glossary-accent);
+}
+
+/* ── 자음 탭 ──────────────────────────── */
+.glossary-jamo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.glossary-jamo__btn {
+    min-width: 42px;
+    padding: 9px 13px;
+    font-size: var(--fs-body);
+    font-weight: 500;
+    color: var(--color-page-text);
+    background: var(--color-page-bg);
+    border: 1px solid var(--glossary-line);
+    border-radius: 8px;
+    cursor: pointer;
+}
+.glossary-jamo__btn.is-active,
+.glossary-jamo__btn.is-active:hover,
+.glossary-jamo__btn.is-active:focus,
+.glossary-jamo__btn.is-active:active {
+    color: #fff;
+    background: var(--glossary-accent);
+    border-color: var(--glossary-accent);
+}
+.glossary-jamo__btn.is-empty,
+.glossary-jamo__btn:disabled {
+    color: var(--color-text-muted);
+    opacity: .45;
+    cursor: default;
+}
+
+/* hover는 마우스가 있는 기기에서만 */
+@media (hover: hover) {
+    .glossary-jamo__btn:hover:not(:disabled):not(.is-active) {
+        color: var(--glossary-accent);
+        border-color: var(--glossary-accent);
+    }
+    .glossary-item.has-more .glossary-item__head:hover {
+        background: var(--color-surface-muted);
+    }
+}
+
+/* ── 본문 2단 ─────────────────────────── */
+.glossary-body {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+    align-items: start;
+}
+@media (min-width: 1024px) {
+    .glossary-body {
+        grid-template-columns: minmax(0, 1fr) 260px;
+        gap: 32px;
+    }
+}
+
+.glossary-main {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+}
+
+/* ── 용어 목록 ────────────────────────── */
+.glossary-list {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+}
+
+.glossary-group {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+@media (min-width: 768px) {
+    .glossary-group {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+    }
+}
+
+.glossary-group__head,
+html[data-theme="dark"] .glossary-group__head {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: flex-end;
+    height: var(--glossary-head-h);
+    margin: 0;
+    padding: 0 0 12px;
+    box-sizing: border-box;
+    background: none;
+    border-bottom: 1px solid var(--glossary-line);
+    font-size: var(--fs-section-title);
+    font-weight: 700;
+    color: var(--color-page-text);
+}
+
+/* ── 용어 블록 ────────────────────────── */
+.glossary-item {
+    display: flex;
+    flex-direction: column;
+    background: var(--color-page-bg);
+    border: 1px solid var(--glossary-line);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
+    transition: background-color .3s ease, border-color .3s ease;
+}
+
+.glossary-item__head {
+    flex: 1;
+    display: block;
+    width: 100%;
+    padding: 22px;
+    text-align: left;
+    background: none;
+    border: 0;
+    position: relative;
+    box-sizing: border-box;
+    cursor: default;
+}
+/* 설명이 넘치는 블록만 클릭 가능 */
+.glossary-item.has-more .glossary-item__head {
+    cursor: pointer;
+    padding-right: 46px;
+}
+
+.glossary-item__term {
+    display: block;
+    font-size: var(--glossary-term-size);
+    font-weight: 700;
+    line-height: 1.45;
+    color: var(--color-page-text);
+    transition: color .3s ease;
+}
+
+/* 뜻 — 기본 2줄, 넘치면 ... */
+.glossary-item__desc {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-top: 8px;
+    font-size: var(--fs-body);
+    line-height: 1.65;
+    color: var(--color-text-muted);
+}
+/* 펼치면 전체 노출 */
+.glossary-item.is-open .glossary-item__desc {
+    display: block;
+    -webkit-line-clamp: unset;
+    overflow: visible;
+}
+
+/* 화살표 — 넘치는 블록에만 */
+.glossary-item__chev {
+    display: none;
+    position: absolute;
+    top: 22px;
+    right: 18px;
+    width: 8px;
+    height: 8px;
+    border-right: 1.6px solid var(--color-text-muted);
+    border-bottom: 1.6px solid var(--color-text-muted);
+    transform: rotate(45deg);
+    transition: transform .18s ease;
+}
+.glossary-item.has-more .glossary-item__chev { display: block; }
+.glossary-item.is-open .glossary-item__chev { transform: rotate(-135deg); }
+
+/* 검색어와 일치하는 글자 */
+.glossary-hl {
+    color: var(--glossary-accent);
+    font-weight: 700;
+    background: rgba(70, 97, 240, .14);
+    border-radius: 3px;
+    padding: 0 2px;
+    margin: 0 -1px;
+}
+html[data-theme="dark"] .glossary-hl {
+    background: rgba(125, 178, 234, .22);
+    color: #9dc2f2;
+}
+
+/* 많이 찾는 용어에서 찾아온 항목 강조 */
+.glossary-item.is-highlight,
+html[data-theme="dark"] .glossary-item.is-highlight {
+    border-color: var(--glossary-accent);
+    background: rgba(70, 97, 240, .06);
+    box-shadow: none;
+}
+.glossary-item.is-highlight .glossary-item__term { color: var(--glossary-accent); }
+.glossary-item.is-highlight .glossary-item__desc { color: var(--color-page-text); }
+
+.glossary-empty {
+    margin: 0;
+    padding: 48px 20px;
+    text-align: center;
+    font-size: var(--fs-meta);
+    color: var(--color-text-muted);
+}
+
+/* hidden 속성이 display 선언을 이기도록 */
+.glossary-item[hidden],
+.glossary-group[hidden] {
+    display: none !important;
+}
+
+/* ── 페이지네이션 ─────────────────────── */
+.glossary-pagination { margin-top: 20px; }
+.glossary-pagination:empty { display: none; }
+
+/* ── 사이드바 ─────────────────────────── */
+.glossary-aside {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* 모바일에서는 숨김 */
+@media (max-width: 1023px) {
+    .glossary-aside { display: none; }
+}
+
+/* PC에서는 첫 블록 윗선과 맞추고 스크롤을 따라 움직임 */
+@media (min-width: 1024px) {
+    .glossary-aside {
+        margin-top: calc(var(--glossary-head-h) + 20px);
+        position: sticky;
+        top: calc(var(--header-height) + 20px);
+        align-self: start;
+    }
+}
+
+.glossary-panel {
+    padding: 20px;
+    border: 1px solid var(--glossary-line);
+    border-radius: 12px;
+}
+.glossary-panel--muted {
+    background: var(--color-surface-muted);
+    border-color: transparent;
+}
+.glossary-panel__title {
+    margin: 0 0 14px;
+    font-size: var(--glossary-term-size);
+    font-weight: 700;
+    line-height: 1.45;
+    color: var(--color-page-text);
+}
+
+.glossary-top {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.glossary-top li {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+.glossary-top__rank,
+.glossary-top__link,
+.glossary-panel__desc,
+.glossary-panel__link {
+    font-size: var(--glossary-side-size);
+    line-height: 1.55;
+    letter-spacing: -0.005em;
+}
+.glossary-top__rank {
+    flex: 0 0 auto;
+    font-weight: 700;
+    color: var(--glossary-accent);
+    font-variant-numeric: tabular-nums;
+}
+.glossary-top__link {
+    color: var(--color-page-text);
+    text-decoration: none;
+    transition: color .15s ease;
+}
+.glossary-top__link:hover,
+.glossary-top__link:active { color: var(--glossary-accent); }
+.glossary-top__link.is-current { color: var(--glossary-accent); font-weight: 700; }
+.glossary-top li:has(.is-current) .glossary-top__rank { color: var(--glossary-accent); }
+
+.glossary-panel__desc {
+    margin: 0 0 12px;
+    color: var(--color-text-muted);
+}
+.glossary-panel__link {
+    font-weight: 500;
+    color: var(--glossary-accent);
+    text-decoration: none;
+}
+.glossary-panel__link:hover { text-decoration: underline; }
+
+/* ── 키보드 포커스 ────────────────────── */
+.glossary-jamo__btn:focus-visible,
+.glossary-item__head:focus-visible,
+.glossary-top__link:focus-visible,
+.glossary-panel__link:focus-visible,
+.glossary-pagination .page-btn:focus-visible {
+    outline: 2px solid var(--glossary-accent);
+    outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .glossary-item,
+    .glossary-item__term,
+    .glossary-item__chev,
+    .glossary-top__link { transition: none; }
+}
+
+
+/*************************
+	[FIX] 카드형 목록 — 모든 화면에서 세로 배치 유지
+	레거시 가로형 규칙(≤1180 / ≤1000 / ≤786)이 카드형까지
+	덮어써서 썸네일이 140px로 줄고 제목이 겹치던 문제
+	적용 대상: 세무 가이드·세무 서비스 등 카드형 목록 전체
+*************************/
+
+.post-list--view-card .article-card--feed {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    grid-template-columns: none !important;
+    grid-template-rows: none !important;
+    gap: 0 !important;
+    padding: 0 !important;
+    border-bottom: 0 !important;
+}
+
+.post-list--view-card .article-thumb-wrap {
+    order: 1 !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    aspect-ratio: 250 / 160 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 0 12px !important;
+    border-radius: 10px !important;
+}
+
+.post-list--view-card .article-thumb {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    border-radius: inherit;
+}
+
+.post-list--view-card .article-info {
+    order: 2 !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    width: 100% !important;
+    min-width: 0;
+}
+
+/* 카테고리 배지 + 발행일자를 제목 위로 */
+.post-list--view-card .article-meta {
+    order: 1 !important;
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    margin: 0 !important;
+}
+.post-list--view-card .article-title {
+    order: 2 !important;
+    margin: 0;
+}
+.section-list .post-list--view-card .article-card .article-subtitle,
+.section-list--category .post-list--view-card .article-subtitle,
+.post-list--view-card .article-subtitle {
+    order: 3 !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin: 0;
+}
+.post-list--view-card .article-tags,
+.post-list--view-card .article-tags--index {
+    order: 4 !important;
+}
+
+/* 1000px 이하 — 설명 1줄 */
+@media (max-width: 1000px) {
+    .section-list .post-list--view-card .article-card .article-subtitle,
+    .section-list--category .post-list--view-card .article-subtitle,
+    .post-list--view-card .article-subtitle {
+        -webkit-line-clamp: 1;
+    }
+}
+
+/* 800px 이하 — 1열 + 가로로 긴 이미지 */
+@media (max-width: 800px) {
+    .post-list--view-card {
+        grid-template-columns: 1fr !important;
+    }
+    .post-list--view-card .article-thumb-wrap {
+        aspect-ratio: 16 / 9 !important;
+    }
+}
+
+
+
+/*************************
+	[GLOSSARY] 함께 보면 좋은 글
+*************************/
+
+.glossary-panel--related {
+    background: var(--color-surface-muted);
+    border-color: transparent;
+}
+
+.glossary-related {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+.glossary-related li {
+    padding: 14px 0;
+}
+.glossary-related li:first-child { padding-top: 0; }
+.glossary-related li:last-child  { padding-bottom: 0; }
+.glossary-related li + li {
+    border-top: 1px solid var(--glossary-line);
+}
+
+.glossary-related__link {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+    text-decoration: none;
+}
+
+.glossary-related__thumb {
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--color-page-bg);
+}
+.glossary-related__thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.glossary-related__title {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: var(--glossary-side-size);
+    line-height: 1.45;
+    letter-spacing: -0.005em;
+    color: var(--color-page-text);
+    transition: color .15s ease;
+}
+.glossary-related__link:hover .glossary-related__title {
+    color: var(--glossary-accent);
+}
+
+
+/* 펼쳐지는 타일 2열 */
+.glossary-topics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 14px;
+}
+.glossary-topics[hidden] { display: none !important; }
+
+.glossary-topic {
+    padding: 12px 8px;
+    font-size: 13.5px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    font-family: inherit;
+    text-align: center;
+    color: var(--color-page-text);
+    background: var(--color-surface-muted);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.glossary-topic.is-active,
+.glossary-topic.is-active:hover {
+    color: #fff;
+    background: var(--glossary-accent);
+    border-color: var(--glossary-accent);
+}
+
+@media (hover: hover) {
+    .glossary-topic:hover:not(.is-active) {
+        border-color: var(--glossary-accent);
+        color: var(--glossary-accent);
+    }
+    .glossary-topic-head:hover .glossary-topic-head__arrow {
+        border-color: var(--glossary-accent);
+    }
+}
+
+.glossary-topic:focus-visible,
+.glossary-topic-head:focus-visible {
+    outline: 2px solid var(--glossary-accent);
+    outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .glossary-topic-head__arrow { transition: none; }
+}
+
+
+/*************************
+	[CALENDAR] 세무 일정
+*************************/
+
+:root {
+    --taxcal-line:        #e4e8ed;
+    --taxcal-line-strong: #d7dce4;
+    --taxcal-accent:      #4661f0;
+    --taxcal-sel:         #dfeafc;
+    --taxcal-tile:        #fafbfc;
+    --taxcal-tile-out:    #f1f3f6;
+    --taxcal-sun:         #d64545;
+    --taxcal-sat:         #3b6fd4;
+
+    --taxcal-bill: #3d8fe8;
+    --taxcal-wht:  #f1875c;
+    --taxcal-vat:  #ec4c4c;
+    --taxcal-inc:  #f0728f;
+    --taxcal-corp: #f5b92e;
+    --taxcal-etc:  #8b95a5;
+
+    --taxcal-bill-ink: #1c6ec2;
+    --taxcal-wht-ink:  #b55529;
+    --taxcal-vat-ink:  #c62f2f;
+    --taxcal-inc-ink:  #c43f61;
+    --taxcal-corp-ink: #8a6410;
+    --taxcal-etc-ink:  #5a6272;
+}
+
+html[data-theme="dark"] {
+    --taxcal-line:        #32343d;
+    --taxcal-line-strong: #3e414c;
+    --taxcal-accent:      #7d92ff;
+    --taxcal-sel:         #25304f;
+    --taxcal-tile:        #1c1d23;
+    --taxcal-tile-out:    #232430;
+    --taxcal-sun:         #f08080;
+    --taxcal-sat:         #7aa5ee;
+
+    --taxcal-bill: #6fb0f5;
+    --taxcal-wht:  #f0996b;
+    --taxcal-vat:  #f57b7b;
+    --taxcal-inc:  #f28aa5;
+    --taxcal-corp: #f0c65e;
+    --taxcal-etc:  #98a2b3;
+
+    --taxcal-bill-ink: #6fb0f5;
+    --taxcal-wht-ink:  #f0996b;
+    --taxcal-vat-ink:  #f57b7b;
+    --taxcal-inc-ink:  #f28aa5;
+    --taxcal-corp-ink: #e8bc52;
+    --taxcal-etc-ink:  #98a2b3;
+}
+
+/* 항목 색 매핑 */
+.taxcal [data-k="bill"] { --k: var(--taxcal-bill); --ink: var(--taxcal-bill-ink); }
+.taxcal [data-k="vat"]  { --k: var(--taxcal-vat);  --ink: var(--taxcal-vat-ink); }
+.taxcal [data-k="wht"]  { --k: var(--taxcal-wht);  --ink: var(--taxcal-wht-ink); }
+.taxcal [data-k="corp"] { --k: var(--taxcal-corp); --ink: var(--taxcal-corp-ink); }
+.taxcal [data-k="inc"]  { --k: var(--taxcal-inc);  --ink: var(--taxcal-inc-ink); }
+.taxcal [data-k="etc"]  { --k: var(--taxcal-etc);  --ink: var(--taxcal-etc-ink); }
+
+/* 공휴일 — 일요일과 같은 빨강 */
+.taxcal-day--hol .taxcal-day__n { color: var(--taxcal-sun); }
+
+/* ── 레이아웃 ───────────────────── */
+.taxcal-body  { display: block; }
+.taxcal-ym    { margin-bottom: 14px; }
+.taxcal-aside { margin-top: 28px; }
+
+/* PC: 달력과 사이드바를 같은 행에 놓아 위·아래 선을 자동으로 맞춘다 */
+@media (min-width: 1024px) {
+    .taxcal-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 196px;
+        grid-template-rows: auto auto;
+        column-gap: 24px;
+        row-gap: 14px;
+        align-items: stretch;
+    }
+    .taxcal-ym {
+        grid-column: 1;
+        grid-row: 1;
+        margin-bottom: 0;
+        align-self: start;
+    }
+    .taxcal-grid {
+        grid-column: 1;
+        grid-row: 2;
+        align-self: stretch;
+    }
+    .taxcal-aside {
+        grid-column: 2;
+        grid-row: 2;
+        margin-top: 0;
+        align-self: stretch;
+    }
+
+    /* 패널도 같은 높이로 늘리고, 남는 높이는 항목 줄들이 나눠 갖는다 */
+    .taxcal-panel {
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+        height: 100%;
+    }
+    .taxcal-kinds    { flex: 1 1 auto; }
+    .taxcal-kinds li { display: flex; flex: 1 1 auto; }
+    .taxcal-kind     { flex: 1 1 auto; }
+
+    /* 달력도 남는 높이를 각 줄이 똑같이 나눠 갖는다 */
+    .taxcal-grid table { height: 100%; }
+    .taxcal-grid td    { height: auto; }
+    .taxcal-day        { height: 100%; min-height: 68px; }
+}
+
+/* 섹션 제목 — 세무 사전 자음 헤더(ㄱ)와 같은 크기 */
+.taxcal-sec {
+    margin: 38px 0 14px;
+    font-size: var(--fs-section-title);
+    font-weight: 700;
+    line-height: 1.45;
+    letter-spacing: -0.02em;
+    color: var(--color-page-text);
+}
+
+/* ── 월 이동 ─────────────────────── */
+.taxcal-ym {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+.taxcal-ym__btn {
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    background: none;
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.taxcal-ym__arrow {
+    width: 8px;
+    height: 8px;
+    border-top: 1.8px solid var(--color-text-muted);
+    border-right: 1.8px solid var(--color-text-muted);
+}
+.taxcal-ym__arrow--prev { transform: rotate(-135deg) translate(-1px, -1px); }
+.taxcal-ym__arrow--next { transform: rotate(45deg) translate(-1px, -1px); }
+.taxcal-ym__label {
+    padding: 0 6px;
+    font-size: var(--fs-section-title);
+    font-weight: 700;
+    line-height: 1.45;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-page-text);
+}
+
+/* ── 달력: 선 없는 타일형 ───────── */
+.taxcal-grid {
+    padding: 4px;
+    border: 1px solid var(--taxcal-line);
+    border-radius: 14px;
+}
+.taxcal-grid table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 5px;
+    margin: 0;
+}
+.taxcal-grid th {
+    padding: 10px 0 2px;
+    border: 0;
+    background: none;
+    font-size: var(--fs-meta);
+    font-weight: 500;
+    color: var(--color-text-muted);
+}
+.taxcal-grid th:first-child { color: var(--taxcal-sun); }
+.taxcal-grid th:last-child  { color: var(--taxcal-sat); }
+.taxcal-grid td {
+    padding: 0;
+    border: 0;
+    background: none;
+    height: 68px;
+}
+
+.taxcal-day {
+    box-sizing: border-box;
+    width: 100%;
+    height: 68px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 8px 4px;
+    background: var(--taxcal-tile);
+    border: 0;
+    border-radius: 9px;
+    font: inherit;
+    color: var(--color-page-text);
+    cursor: pointer;
+    overflow: hidden;
+}
+.taxcal-day__n {
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.taxcal-day--sun .taxcal-day__n { color: var(--taxcal-sun); }
+.taxcal-day--sat .taxcal-day__n { color: var(--taxcal-sat); }
+.taxcal-day--has .taxcal-day__n { font-weight: 700; }
+.taxcal-day--out {
+    background: var(--taxcal-tile-out);
+    cursor: default;
+}
+.taxcal-day--out .taxcal-day__n {
+    color: var(--color-text-muted);
+    opacity: .5;
+}
+.taxcal-day--today { box-shadow: inset 0 0 0 1.5px var(--color-page-text); }
+.taxcal-day--today .taxcal-day__n { font-weight: 700; }
+.taxcal-day.is-active { background: var(--taxcal-sel); }
+
+/* 일정 표시 점 — 개수와 상관없이 항상 같은 크기의 정원 */
+.taxcal-day__dots {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 8px;
+    line-height: 0;
+}
+.taxcal .taxcal-dot {
+    box-sizing: border-box;
+    flex: 0 0 8px;
+    display: block;
+    width: 8px;
+    height: 8px;
+    min-width: 8px;
+    max-width: 8px;
+    min-height: 8px;
+    max-height: 8px;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 50%;
+    aspect-ratio: 1 / 1;
+    background: var(--k, var(--taxcal-etc));
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 16%);
+}
+html[data-theme="dark"] .taxcal .taxcal-dot {
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 20%);
+}
+
+/* 밝은 색도 윤곽이 잡히도록 */
+.taxcal-kind.is-on .taxcal-kind__check { border-color: var(--ink, var(--taxcal-etc-ink)); }
+
+@media (hover: hover) {
+    .taxcal-ym__btn:hover { background: var(--color-surface-muted); }
+    .taxcal-ym__btn:hover .taxcal-ym__arrow { border-color: var(--taxcal-accent); }
+    .taxcal-day:hover:not(.taxcal-day--out):not(.is-active) { background: var(--color-surface-muted); }
+}
+
+@media (max-width: 560px) {
+    .taxcal-grid { padding: 3px; }
+    .taxcal-grid table { border-spacing: 3px; }
+    .taxcal-grid td { height: 52px; }
+    .taxcal-day {
+        height: 52px;
+        min-height: 52px;
+        gap: 6px;
+        padding: 6px 2px;
+        border-radius: 7px;
+    }
+    .taxcal-day__n { font-size: 15px; }
+    .taxcal-day__dots { gap: 3px; height: 6px; }
+    .taxcal .taxcal-dot {
+        flex-basis: 6px;
+        width: 6px;
+        height: 6px;
+        min-width: 6px;
+        max-width: 6px;
+        min-height: 6px;
+        max-height: 6px;
+    }
+}
+
+/* ── 월별 일정 리스트 ───────────── */
+.taxcal-list {
+    border: 1px solid var(--taxcal-line);
+    border-radius: 12px;
+    overflow: hidden;
+}
+.taxcal-group + .taxcal-group { border-top: 1px solid var(--taxcal-line); }
+
+/* 오늘 기준 다음에 올 날짜 묶음만 강조 (날짜를 직접 고르면 강조하지 않음) */
+/* 배경 진하기는 5% 자리 숫자만 바꾸면 됩니다 (0% = 막대만) */
+.taxcal-group.is-next {
+    background: color-mix(in srgb, var(--taxcal-accent) 5%, transparent);
+}
+.taxcal-group.is-next .taxcal-row::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--taxcal-accent);
+}
+.taxcal-group.is-next .taxcal-row + .taxcal-row {
+    border-top-color: color-mix(in srgb, var(--taxcal-accent) 15%, transparent);
+}
+
+.taxcal-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 18px 22px;
+}
+.taxcal-row + .taxcal-row { border-top: 1px solid var(--taxcal-line); }
+/* 같은 날짜가 반복되면 날짜는 첫 줄에만 */
+.taxcal-row + .taxcal-row .taxcal-row__date { visibility: hidden; }
+.taxcal-row.is-past .taxcal-row__date,
+.taxcal-row.is-past .taxcal-row__title,
+.taxcal-row.is-past .taxcal-row__note,
+.taxcal-row.is-past .taxcal-row__dday { opacity: .55; }
+
+.taxcal-row__date {
+    flex: 0 0 46px;
+    text-align: center;
+    line-height: 1.2;
+}
+.taxcal-row__date span {
+    display: block;
+    font-size: 12px;
+    color: var(--color-text-muted);
+}
+.taxcal-row__date b {
+    display: block;
+    font-size: 21px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-page-text);
+}
+.taxcal-group.is-next .taxcal-row__date span,
+.taxcal-group.is-next .taxcal-row__date b { color: var(--taxcal-accent); }
+
+/* 제목 + 설명을 한 줄에 나란히 */
+.taxcal-row__body {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+}
+.taxcal-row__title {
+    flex: 0 0 auto;
+    max-width: 100%;
+    font-size: var(--glossary-term-size);
+    font-weight: 700;
+    line-height: 1.45;
+    letter-spacing: -0.01em;
+    color: var(--color-page-text);
+}
+.taxcal-row__note {
+    flex: 1 1 180px;
+    min-width: 0;
+    font-size: var(--fs-meta);
+    line-height: 1.5;
+    letter-spacing: -0.005em;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.taxcal-row__kind {
+    display: inline-block;
+    margin-right: 8px;
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-size: var(--fs-meta);
+    font-weight: 500;
+    vertical-align: 2px;
+    white-space: nowrap;
+    color: var(--ink, var(--taxcal-etc-ink));
+    background: color-mix(in srgb, var(--k, var(--taxcal-etc)) 18%, var(--color-page-bg));
+}
+.taxcal-row__dday {
+    flex: 0 0 auto;
+    font-size: var(--glossary-side-size);
+    font-weight: 500;
+    line-height: 1.45;
+    color: var(--color-page-text);
+    font-variant-numeric: tabular-nums;
+}
+.taxcal-group.is-next .taxcal-row__dday {
+    font-weight: 700;
+    color: var(--taxcal-accent);
+}
+.taxcal-list__empty {
+    margin: 0;
+    padding: 34px 20px;
+    text-align: center;
+    font-size: var(--fs-meta);
+    color: var(--color-text-muted);
+}
+
+/* 1단계 — 좁아지면 설명부터 감춘다 */
+@media (max-width: 860px) {
+    .taxcal-row__note { display: none; }
+}
+
+/* 2단계 — 더 좁아지면 D-day 도 감추고 날짜·항목·제목만 남긴다 */
+@media (max-width: 560px) {
+    .taxcal-row { gap: 12px; padding: 15px 14px; }
+    .taxcal-row__date { flex-basis: 40px; }
+    .taxcal-row__date b { font-size: 19px; }
+    .taxcal-row__dday { display: none; }
+    .taxcal-row__kind { margin-right: 6px; padding: 3px 8px; }
+}
+
+/* ── 지난 일정 보기 ─────────────── */
+.taxcal-more {
+    display: block;
+    width: 100%;
+    margin-top: 20px;
+    text-align: center;
+}
+.taxcal-more[hidden] { display: none !important; }
+.taxcal-more button {
+    display: inline-block;
+    padding: 9px 22px;
+    border: 1px solid var(--taxcal-line-strong);
+    border-radius: 999px;
+    background: var(--color-page-bg);
+    font: inherit;
+    font-size: var(--glossary-side-size);
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--color-text-muted);
+    cursor: pointer;
+}
+
+@media (hover: hover) {
+    .taxcal-more button:hover {
+        border-color: var(--taxcal-accent);
+        color: var(--taxcal-accent);
+    }
+}
+
+/* ── 사이드바: 항목별 보기 ──────── */
+/* 세무 사전과 동일 — 1023px 이하에서는 숨김 */
+@media (max-width: 1023px) {
+    .taxcal-aside { display: none; }
+}
+
+/* 세무 사전 '많이 찾는 용어'와 동일한 테두리 상자 */
+.taxcal-panel {
+    padding: 20px;
+    border: 1px solid var(--glossary-line);
+    border-radius: 12px;
+}
+.taxcal-panel__title {
+    margin: 0 0 14px;
+    font-size: var(--glossary-term-size);
+    font-weight: 700;
+    line-height: 1.45;
+    color: var(--color-page-text);
+}
+.taxcal-kinds {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+.taxcal-kinds li {
+    list-style: none;
+    margin: 0;
+    border-top: 1px solid var(--taxcal-line);
+}
+.taxcal-kinds li:first-child { border-top: 0; }
+.taxcal-kinds li::marker { content: none; }
+
+.taxcal-kind {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 0;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    font: inherit;
+    font-size: var(--glossary-side-size);
+    line-height: 1.55;
+    letter-spacing: -0.005em;
+    color: var(--color-page-text);
+    text-align: left;
+    cursor: pointer;
+}
+.taxcal-kind__label {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.taxcal-kind:not(.is-on) { color: var(--color-text-muted); }
+
+/* 체크박스가 곧 항목 색 (범례 겸 필터) */
+.taxcal-kind__check {
+    position: relative;
+    flex: 0 0 18px;
+    box-sizing: border-box;
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 1.5px solid var(--taxcal-line-strong);
+    background: var(--color-page-bg);
+}
+.taxcal-kind.is-on .taxcal-kind__check {
+    border-color: var(--k, var(--color-page-text));
+    background: var(--k, var(--color-page-text));
+}
+.taxcal-kind.is-on .taxcal-kind__check::after {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 2px;
+    width: 4px;
+    height: 8px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+@media (hover: hover) {
+    .taxcal-kind:hover .taxcal-kind__check { border-color: var(--taxcal-accent); }
+}
+
+.taxcal button:focus-visible {
+    outline: 2px solid var(--taxcal-accent);
+    outline-offset: -2px;
+}
+
+
+/* ── 함께 보면 좋은 글 (카드형 목록과 동일) ── */
+.taxcal-rel { margin-top: 44px; }
+
+.layout--category .section-list .post-list.post-list--view-card.taxcal-relist {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* 항목별 보기와 같은 시점에 숨김 */
+@media (max-width: 1023px) {
+    .taxcal-rel { display: none; }
+}
+
+
+/* ═══════════════════════════════════════════════════
+   세무 사전 — 용어 제목 · 펼친 본문 · 주변 흐리게
+   ═══════════════════════════════════════════════════ */
+
+/* 용어를 h3로 올렸다. 모양은 그대로 유지 */
+.glossary-item__title {
+    margin: 0;
+    padding: 0;
+    font: inherit;
+    letter-spacing: inherit;
+    flex: 1;
+    display: flex;
+}
+.glossary-item__title > .glossary-item__head { flex: 1; }
+
+/* 뜻 — 3줄까지. 펼쳐도 높이가 변하지 않게 열었을 때도 같다 */
+.glossary-item__desc,
+.glossary-item.is-open .glossary-item__desc {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ── 펼쳤을 때 열리는 본문 ── */
+.glossary-item__body {
+    padding: 16px 22px 22px;
+    background: var(--color-page-bg);
+    transition: background-color .3s ease;
+}
+.glossary-item__body[hidden] { display: none; }
+
+.glossary-item__body .gl-label,
+.glossary-item__body h3 {
+    margin: 18px 0 6px;
+    font-size: var(--fs-meta);
+    font-weight: 700;
+    letter-spacing: .01em;
+    color: var(--glossary-accent);
+}
+.glossary-item__body .gl-label:first-child,
+.glossary-item__body h3:first-child { margin-top: 0; }
+
+.glossary-item__body p {
+    margin: 0;
+    font-size: var(--fs-body);
+    line-height: 1.75;
+    color: var(--color-text-muted);
+    word-break: keep-all;
+}
+
+/* 관련 업무 — 칩 */
+.glossary-item__body .gl-work {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.glossary-item__body .gl-work a,
+.glossary-item__body .gl-work span {
+    padding: 6px 13px;
+    border-radius: 8px;
+    font-size: var(--fs-meta);
+    font-weight: 700;
+    line-height: 1.4;
+    color: #1a7a67;
+    background: #e3f2ee;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.glossary-item__body .gl-work a:hover { background: #d3ebe4; }
+
+html[data-theme="dark"] .glossary-item__body .gl-work a,
+html[data-theme="dark"] .glossary-item__body .gl-work span {
+    color: #4fc3a6;
+    background: #1c2f2a;
+}
+html[data-theme="dark"] .glossary-item__body .gl-work a:hover { background: #24403a; }
+
+/* ── 주변 카드 흐리게 ──
+   테두리는 그대로 두고 글자만 흐려진다 */
+.glossary-item__term,
+.glossary-item__desc,
+.glossary-item__chev {
+    transition: opacity .2s ease;
+}
+.glossary.is-focusing .glossary-item:not(.is-open) .glossary-item__term,
+.glossary.is-focusing .glossary-item:not(.is-open) .glossary-item__desc,
+.glossary.is-focusing .glossary-item:not(.is-open) .glossary-item__chev {
+    opacity: .34;
+}
+
+/* 하나가 열려 있는 동안 다른 용어는 눌리지도 선택되지도 않는다.
+   마우스를 올려도 배경이 바뀌지 않는다 */
+.glossary.is-focusing .glossary-item:not(.is-open) {
+    pointer-events: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.glossary-item.is-open {
+    border-color: var(--glossary-accent);
+}
+@media (prefers-reduced-motion: reduce) {
+    .glossary-item__term,
+    .glossary-item__desc,
+    .glossary-item__chev { transition: none; }
+}
+
+/* ── PC — 펼친 내용이 카드 아래에 떠서 열린다 ── */
+@media (min-width: 768px) {
+    /* 같은 줄 카드는 높이를 맞춘다 (펼쳐도 줄 높이가 안 변함) */
+    .glossary-list .glossary-group { align-items: stretch; }
+
+    .glossary-item {
+        position: relative;
+        overflow: visible;
+    }
+    .glossary-item.is-open {
+        z-index: 20;
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+
+    .glossary-item__body {
+        position: absolute;
+        top: 100%;
+        left: -1px;
+        right: -1px;
+        box-sizing: border-box;
+        z-index: 20;
+        /* 글 왼·오른쪽 여백을 카드 머리와 똑같이 맞춘다 */
+        padding: 16px 46px 22px 22px;
+        border: 1px solid var(--glossary-accent);
+        /* 구분선 없음 */
+        border-top: none;
+        border-radius: 0 0 14px 14px;
+        box-shadow: 0 16px 32px rgba(16, 24, 40, .14);
+    }
+}
+
+/* ── 모바일 — 1열이므로 카드 안에서 펼쳐진다 ── */
+@media (max-width: 767px) {
+    /* 펼친 카드는 테두리를 또렷하게 */
+    .glossary-item.is-open {
+        border-color: var(--glossary-accent);
+        box-shadow: 0 0 0 1px var(--glossary-accent);
+    }
+}
+
+/* 머리 배경이 카드 둥근 모서리를 따라가게
+   (overflow: visible 로 바꾸면서 네모로 삐져나오던 것) */
+.glossary-item__head {
+    border-radius: 13px;
+}
+.glossary-item.is-open .glossary-item__head {
+    border-radius: 13px 13px 0 0;
+}
+
+/* 설명 영역을 최소 두 줄로 잡아 카드마다 글 덩어리 높이를 맞춘다
+   (제목은 카드 맨 위라 이미 같은 위치) */
+.glossary-item__desc {
+    min-height: 3.3em;   /* line-height 1.65 × 2줄 */
+}

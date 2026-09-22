@@ -32,24 +32,24 @@
         <div class="search-modal__popular">
             <h3 class="search-modal__popular-title">자주 찾는 검색어</h3>
             <div class="search-modal__popular-tags" id="search-modal-popular-tags">
-                <button type="button" class="search-modal__tag" data-keyword="세금계산서">세금계산서</button>
-                <button type="button" class="search-modal__tag" data-keyword="역발행">역발행</button>
-                <button type="button" class="search-modal__tag" data-keyword="정발행">정발행</button>
-                <button type="button" class="search-modal__tag" data-keyword="예약발행">예약발행</button>
-                <button type="button" class="search-modal__tag" data-keyword="마감일">마감일</button>
-                <button type="button" class="search-modal__tag" data-keyword="초보사업자">초보사업자</button>
-                <button type="button" class="search-modal__tag" data-keyword="비즈니스">비즈니스</button>
-                <button type="button" class="search-modal__tag" data-keyword="총정리">총정리</button>
-                <button type="button" class="search-modal__tag" data-keyword="공동인증서">공동인증서</button>
-                <button type="button" class="search-modal__tag" data-keyword="자동화">자동화</button>
-                <button type="button" class="search-modal__tag" data-keyword="TOP5">TOP5</button>
-                <button type="button" class="search-modal__tag" data-keyword="바로빌">바로빌</button>
-                <button type="button" class="search-modal__tag" data-keyword="트랜드">트랜드</button>
-                <button type="button" class="search-modal__tag" data-keyword="세무일정">세무일정</button>
-                <button type="button" class="search-modal__tag" data-keyword="지원정책">지원정책</button>
-                <button type="button" class="search-modal__tag" data-keyword="홈택스">홈택스</button>
-                <button type="button" class="search-modal__tag" data-keyword="정산">정산</button>
-                <button type="button" class="search-modal__tag" data-keyword="사업자등록">사업자등록</button>
+                <?php
+                // 실제로 검색된 말이 쌓이면 그걸 쓰고, 아직 없으면 아래 기본값을 쓴다.
+                $bb_tags = function_exists( 'borobill_get_top_search_keywords' )
+                    ? borobill_get_top_search_keywords( 12, 30, true, 'modal' )
+                    : array();
+
+                if ( empty( $bb_tags ) ) {
+                    $bb_tags = array(
+                        '전자세금계산서', '역발행', '수정세금계산서', '가산세',
+                        '현금영수증', '부가세', '홈택스', '계좌조회',
+                        '오픈뱅킹', '스크래핑', '공동인증서', '사업자등록',
+                    );
+                }
+
+                foreach ( $bb_tags as $bb_tag ) :
+                    ?>
+                    <button type="button" class="search-modal__tag" data-keyword="<?php echo esc_attr( $bb_tag ); ?>"><?php echo esc_html( $bb_tag ); ?></button>
+                <?php endforeach; ?>
             </div>
         </div>
 
