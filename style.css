@@ -10059,9 +10059,71 @@ html[data-theme="dark"] .taxcal .taxcal-dot {
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-/* 항목별 보기와 같은 시점에 숨김 */
+/* 모바일·태블릿 — 카드 3장 대신 목록형 3줄로 보여 준다.
+   카드형 기본 규칙이 !important 로 박혀 있어 같은 무게로 되돌린다. */
 @media (max-width: 1023px) {
-    .taxcal-rel { display: none; }
+    .taxcal-rel { margin-top: 32px; }
+
+    .layout--category .section-list .post-list.post-list--view-card.taxcal-relist {
+        display: block !important;
+        grid-template-columns: none !important;
+        gap: 0 !important;
+    }
+
+    /* 한 줄 = 글 정보(왼쪽) + 썸네일(오른쪽) */
+    .post-list--view-card.taxcal-relist .article-card--feed {
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 14px !important;
+        padding: 16px 0 !important;
+        border-bottom: 1px solid var(--glossary-line) !important;
+    }
+
+    .post-list--view-card.taxcal-relist .article-card__link:last-child .article-card--feed {
+        border-bottom: 0 !important;
+    }
+
+    /* 썸네일은 오른쪽에 작은 정사각형 */
+    .post-list--view-card.taxcal-relist .article-thumb-wrap {
+        order: 2 !important;
+        flex: 0 0 84px !important;
+        width: 84px !important;
+        max-width: 84px !important;
+        aspect-ratio: 1 / 1 !important;
+        height: auto !important;
+        margin: 0 !important;
+        border-radius: 8px !important;
+    }
+
+    .post-list--view-card.taxcal-relist .article-thumb {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+    }
+
+    /* 글 정보가 남는 폭을 다 쓴다 */
+    .post-list--view-card.taxcal-relist .article-info {
+        order: 1 !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        gap: 6px !important;
+    }
+
+    .post-list--view-card.taxcal-relist .article-title {
+        display: -webkit-box !important;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden !important;
+    }
+
+    /* 목록형에서는 소제목을 빼 한 줄을 짧게 유지한다.
+       썸네일은 날짜~제목 덩어리 기준으로 가운데 정렬된다. */
+    .layout--category .section-list .post-list--view-card.taxcal-relist .article-card .article-subtitle,
+    .section-list .post-list--view-card.taxcal-relist .article-card .article-subtitle,
+    .post-list--view-card.taxcal-relist .article-subtitle {
+        display: none !important;
+    }
 }
 
 
@@ -10150,18 +10212,24 @@ html[data-theme="dark"] .glossary-item__body .gl-work a:hover { background: #244
 .glossary-item__chev {
     transition: opacity .2s ease;
 }
-.glossary.is-focusing .glossary-item:not(.is-open) .glossary-item__term,
-.glossary.is-focusing .glossary-item:not(.is-open) .glossary-item__desc,
-.glossary.is-focusing .glossary-item:not(.is-open) .glossary-item__chev {
-    opacity: .34;
+/* 주변 용어 흐리게 — PC 전용.
+   모바일은 한 줄이라 흐리게 할 이웃이 없고, 눌러야 하는 대상이라 그대로 둔다. */
+@media (min-width: 768px) {
+    .glossary.is-focusing .glossary-item:not(.is-open) .glossary-item__term,
+    .glossary.is-focusing .glossary-item:not(.is-open) .glossary-item__desc,
+    .glossary.is-focusing .glossary-item:not(.is-open) .glossary-item__chev {
+        opacity: .34;
+    }
 }
 
-/* 하나가 열려 있는 동안 다른 용어는 눌리지도 선택되지도 않는다.
-   마우스를 올려도 배경이 바뀌지 않는다 */
-.glossary.is-focusing .glossary-item:not(.is-open) {
-    pointer-events: none;
-    -webkit-user-select: none;
-    user-select: none;
+/* 하나가 열려 있는 동안 다른 용어는 눌리지 않는다 — PC 전용.
+   모바일은 다른 용어를 바로 눌러 넘어갈 수 있어야 한다. */
+@media (min-width: 768px) {
+    .glossary.is-focusing .glossary-item:not(.is-open) {
+        pointer-events: none;
+        -webkit-user-select: none;
+        user-select: none;
+    }
 }
 
 .glossary-item.is-open {
